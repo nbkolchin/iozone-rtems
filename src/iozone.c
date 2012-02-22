@@ -69,6 +69,10 @@
 #if defined (Windows)
 #include <windows.h>
 #include <errno.h>
+#elif defined(__rtems__)
+#include <rtems.h>
+#include <rtems/system.h>
+#include <errno.h>
 #else
 #if defined(linux) || defined(solaris) || defined(macosx) || defined(__AIX__) || defined(FreeBSD) || defined(_HPUX_SOURCE)
 #include <errno.h>
@@ -276,7 +280,43 @@ THISVERSION,
     INCLUDE FILES (system-dependent)
 
 ******************************************************************/
+#ifndef __rtems__
 #include <sys/mman.h>
+#else
+#define PROT_READ 0
+#define PROT_WRITE 1
+#define MAP_FILE 1
+#define MAP_SHARED 2
+#define MAP_PRIVATE 4
+#define MAP_ANONYMOUS 8
+#define MAP_FAILED ((void*)-1)
+static inline void* mmap(
+    void* addr RTEMS_VAR_UNUSED,
+    size_t length RTEMS_VAR_UNUSED,
+    int prot RTEMS_VAR_UNUSED,
+    int flags RTEMS_VAR_UNUSED,
+    int fd RTEMS_VAR_UNUSED,
+    off_t offset RTEMS_VAR_UNUSED)
+{
+  errno = ENOSYS;
+  return MAP_FAILED;
+}
+static inline int munmap(
+    void* addr RTEMS_VAR_UNUSED,
+    size_t length RTEMS_VAR_UNUSED)
+{
+  errno = ENOSYS;
+  return -1;
+}
+static inline int msync(
+    void* addr RTEMS_VAR_UNUSED,
+    size_t length RTEMS_VAR_UNUSED,
+    int flags RTEMS_VAR_UNUSED)
+{
+  errno = ENOSYS;
+  return -1;
+}
+#endif
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
@@ -401,7 +441,7 @@ typedef long long off64_t;
 #include <sys/shm.h>
 #endif
 
-#if defined(bsd4_2) && !defined(MS_SYNC)
+#if (defined(bsd4_2) && !defined(MS_SYNC)) || defined(__rtems__)
 #define MS_SYNC 0
 #define MS_ASYNC 0
 #endif
@@ -476,9 +516,19 @@ struct runtime {
 #include <sys/cnx_ail.h>
 #endif
 
+#if RTEMS_USE_LWIPNET == 0
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+
+#else
+#define LWIP_COMPAT_SOCKETS 1
+#include <sys/select.h>
+#include <lwip/sockets.h>
+#include <lwip/inet.h>
+#include <lwip/if.h>
+
+#endif
 
 
 /* 
@@ -24045,6 +24095,8 @@ int main(void)
 #if defined(Windows)
 int false = 0;
 int true = 1;
+#elif defined(__rtems__)
+#include <stdbool.h>
 #else
 typedef enum { false = 0, true } boolean;
 #endif
