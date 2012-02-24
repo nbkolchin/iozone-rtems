@@ -1,0 +1,2 @@
+    Moving the network support under conditional expressions
+    to be able manage it at build time.
