@@ -62,6 +62,12 @@
 /* The version number */
 #define THISVERSION "        Version $Revision: 3.398 $"
 
+/* The next functionalilties are disabled because of platform limitations */
+#undef PIT_ENABLED
+#undef NET_BENCH
+#undef ASYNC_IO
+#undef SHARED_MEM
+
 #if defined(linux)
   #define _GNU_SOURCE
 #endif
@@ -275,6 +281,11 @@ THISVERSION,
   " ",
   ""};
 
+/*TODO:igorv*/
+#define bzero(p,n) memset((p),(0),(n))
+#define bcopy(a,b,c) memmove (b,a,c)
+
+
 /******************************************************************
 
     INCLUDE FILES (system-dependent)
@@ -290,6 +301,11 @@ THISVERSION,
 #define MAP_PRIVATE 4
 #define MAP_ANONYMOUS 8
 #define MAP_FAILED ((void*)-1)
+
+//#ifndef RTEMS_COMBO
+//#define RTEMS_VAR_UNUSED
+//#endif
+
 static inline void* mmap(
     void* addr RTEMS_VAR_UNUSED,
     size_t length RTEMS_VAR_UNUSED,
@@ -298,6 +314,7 @@ static inline void* mmap(
     int fd RTEMS_VAR_UNUSED,
     off_t offset RTEMS_VAR_UNUSED)
 {
+  /* TODO: unused variables */
   errno = ENOSYS;
   return MAP_FAILED;
 }
@@ -352,9 +369,12 @@ static inline int msync(
  */
 #include <strings.h>
 #include <stdlib.h>
+
+#ifdef NET_BENCH
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 
 #endif
 #if ( defined(solaris) && defined(studio11) )
@@ -367,9 +387,13 @@ static inline int msync(
 #endif
 
 #if defined(linux)
+
+#ifdef NET_BENCH
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
+
 #endif
 
 #ifndef MAP_FAILED
@@ -516,21 +540,21 @@ struct runtime {
 #include <sys/cnx_ail.h>
 #endif
 
+#ifdef NET_BENCH
 #if RTEMS_USE_LWIPNET == 0
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
 #else
 #define LWIP_COMPAT_SOCKETS 1
 #include <sys/select.h>
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
 #include <lwip/if.h>
-
+#endif
 #endif
 
-
+#ifdef NET_BENCH
 /* 
  * Messages the controlling process sends to children.
  * Internal representation that is arch specific.
@@ -793,6 +817,7 @@ struct master_neutral_command {
 #define R_TERMINATE       6
 #define R_DEATH           7
 
+#endif /* NET_BENCH */
 
 /* These are the defaults for the processor. They can be 
  * over written by the command line options.
@@ -1005,15 +1030,20 @@ struct master_neutral_command {
 /*								  */
 /******************************************************************/
 char *initfile();
+
+#ifdef PIT_ENABLED
 /*int pit_gettimeofday( struct timeval *, struct timezone *, char *, char *);*/
 int pit_gettimeofday( );
 static int openSckt( const char *, const char *, unsigned int );
 static void pit( int, struct timeval *);
+#endif
+
 void mmap_end();
 void alloc_pbuf();
 void auto_test();		/* perform automatic test series  */
 void show_help();		/* show development help          */
 static double time_so_far();	/* time since start of program    */
+
 #ifdef unix
 static double utime_so_far();	/* user time 			  */
 static double stime_so_far();	/* system time   		  */
@@ -1022,6 +1052,7 @@ static double cputime_so_far();
 #else
 #define cputime_so_far()	time_so_far()
 #endif
+
 static double time_so_far1();	/* time since start of program    */
 void get_resolution();
 void get_rusage_resolution();
@@ -1034,11 +1065,13 @@ void multi_throughput_test();	/* Multi process throughput 	  */
 void prepage();			/* Pre-fault user buffer	  */
 void get_date();
 int get_pattern();		/* Set pattern based on version   */
+
 #ifdef HAVE_ANSIC_C
 float do_compute(float);	/* compute cycle simulation       */
 #else
 float do_compute();		/* compute cycle simulation       */
 #endif
+
 void write_perf_test();		/* write/rewrite test		  */
 void fwrite_perf_test();	/* fwrite/refwrite test		  */
 void fread_perf_test();		/* fread/refread test		  */
@@ -1048,32 +1081,40 @@ void random_perf_test();	/* random read/write test	  */
 void reverse_perf_test();	/* reverse read test		  */
 void rewriterec_perf_test();	/* rewrite record test		  */
 void read_stride_perf_test();	/* read with stride test	  */
+
 #ifdef HAVE_PREAD
 void pread_perf_test();		/* pread/re-pread test		  */
 void pwrite_perf_test();	/* pwrite/re-pwrite test	  */
 #endif /* HAVE_PREAD */
+
 #ifdef HAVE_PREADV
 void preadv_perf_test();	/* preadv/re-preadv test	  */
 void pwritev_perf_test();	/* pwritev/re-pwritev test	  */
 #endif /* HAVE_PREADV */
+
 void store_dvalue();		/* Store doubles array 		  */
 void dump_excel();
 void dump_throughput();
 int sp_start_child_send();
 int sp_start_master_listen();
+
 #ifdef HAVE_ANSIC_C
+
 #if defined (HAVE_PREAD) && defined(_LARGEFILE64_SOURCE)
 ssize_t pwrite64(); 
 ssize_t pread64(); 
 #endif
+
 #if !defined(linux)
 char *getenv();
 char *inet_ntoa();
 int system();
 #endif
+
 void my_nap();
 void my_unap();
 int thread_exit();
+
 #ifdef ASYNC_IO
 size_t async_write();
 void async_release();
@@ -1082,11 +1123,13 @@ int async_read_no_copy();
 size_t async_write_no_copy();
 void end_async();
 void async_init();
-#else
-size_t async_write();
-size_t async_write_no_copy();
-void async_release();
+/*TODO: double check it */
+//#else
+//size_t async_write();
+//size_t async_write_no_copy();
+//void async_release();
 #endif
+
 void do_float();
 int create_xls();
 void close_xls();
@@ -1116,10 +1159,12 @@ void *(thread_write_test)(void *);
 void *(thread_fwrite_test)(void *);
 void *(thread_fread_test)(void *);
 void *(thread_read_test)(void*);
+
 #ifdef HAVE_PREAD
 void *(thread_pread_test)(void*);
 void *(thread_pwrite_test)(void*);
 #endif
+
 void *(thread_cleanup_test)(void*);
 void *(thread_cleanup_quick)(void*);
 void *(thread_ranread_test)(void *);
@@ -1131,9 +1176,11 @@ void *(thread_stride_read_test)(void *);
 void *(thread_set_base)(void *);
 void *(thread_join)(long long, void *);
 void disrupt(int);
+
 #if defined(Windows)
 void disruptw(HANDLE);
 #endif
+
 long long get_traj(FILE *, long long *, float *, long);
 void create_temp(off64_t, long long );
 FILE *open_w_traj(void);
@@ -1152,13 +1199,17 @@ void del_record_sizes( void );
 void hist_insert(double );
 void dump_hist(char *,int );
 void do_speed_check(int);
-#else
+
+#else /* HAVE_ANSIC_C */
+
 void do_speed_check();
+
 #if !defined(linux)
 char *getenv();
 char *inet_ntoa();
 int system();
 #endif
+
 void my_nap();
 void my_unap();
 int thread_exit();
@@ -1173,6 +1224,7 @@ size_t async_write_no_copy();
 int async_read();
 int async_read_no_copy();
 #endif
+
 int mylockf();
 int mylockr();
 int rand();
@@ -1215,7 +1267,8 @@ static double cpu_util();
 void del_record_sizes();
 void hist_insert();
 void dump_hist();
-#endif
+
+#endif /* HAVE_ANSIC_C */
 
 #ifdef _LARGEFILE64_SOURCE
 #define I_LSEEK(x,y,z) 	lseek64(x,(off64_t)(y),z)
@@ -1528,7 +1581,10 @@ int toutputindex; /* Index to the current output line */
 int cdebug = 0; /* Use to turn on child/client debugging in cluster mode. */
 int mdebug = 0; /* Use to turn on master debug in cluster mode */
 int aggflag; /* Used to indicate constant aggregate data set size */
+
+#ifdef NET_BENCH
 struct sockaddr_in child_sync_sock, child_async_sock;
+#endif
 
 /*
  * Change this whenever you change the message format of master or client.
@@ -6904,10 +6960,14 @@ time_so_far()
     * into the 8 to 9 microsecond resolution.
     */
    if(pit_hostname[0]){
+#ifdef PIT_ENABLED
      if (pit_gettimeofday(&tp, (struct timezone *) NULL, pit_hostname, 
  		pit_service) == -1)
          perror("pit_gettimeofday");
   	 return ((double) (tp.tv_sec)) + (((double) tp.tv_usec) * 0.000001 );
+#else
+         return 0;
+#endif
    }
    else
    {
@@ -6930,9 +6990,13 @@ time_so_far()
   struct timeval tp;
 
   if(pit_hostname[0]){
+#ifdef PIT_ENABLED
      if (pit_gettimeofday(&tp, (struct timezone *) NULL, pit_hostname, pit_service) == -1)
          perror("pit_gettimeofday");
   	 return ((double) (tp.tv_sec)) + (((double) tp.tv_usec) * 0.000001 );
+#else
+         return 0;
+#endif
   }
   else
   {
@@ -7339,7 +7403,7 @@ long long *data2;
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv  long long *gc=0; */
 #endif
 
 	int test_foo;
@@ -7681,10 +7745,12 @@ long long *data2;
 			{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO                      
 			     if(no_copy_flag)
 			       async_write_no_copy(gc, (long long)fd, nbuff, reclen, (i*reclen), depth,free_addr);
 			     else
 			       async_write(gc, (long long)fd, pbuff, reclen, (i*reclen), depth);
+#endif
 			  }
 			  else
 			  {
@@ -8363,8 +8429,9 @@ long long *data1,*data2;
 	struct cache *gc=0;
 
 #else
-	long long *gc=0;
+/* igorv long long *gc=0; */
 #endif
+
 #ifdef unix
 	qtime_u_start=qtime_u_stop=0;
 	qtime_s_start=qtime_s_stop=0;
@@ -8608,12 +8675,14 @@ long long *data1,*data2;
 			{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, (i*reclen), reclen,
 			    	1LL,(numrecs64*reclen),depth);
 			    else
 			      async_read(gc, (long long)fd, nbuff, (i*reclen),reclen,
 			    	1LL,(numrecs64*reclen),depth);
+#endif
 			  }
 			  else
 			  {
@@ -8664,8 +8733,10 @@ long long *data1,*data2;
 				}
 			  }
 			}
+#ifdef ASYNC_IO
 			if(async_flag && no_copy_flag)
 				async_release(gc);
+#endif
 			buffer1=0;
 			if(hist_summary)
 			{
@@ -8859,7 +8930,9 @@ long long *data1, *data2;
 	unsigned long long randreadrate[2];
 	off64_t filebytes64;
 	off64_t lock_offset=0;
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	char *wmaddr,*nbuff;
 	char *maddr,*free_addr;
 	int fd,wval;
@@ -8870,7 +8943,7 @@ long long *data1, *data2;
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0; */
 #endif
 #ifdef MERSENNE
     unsigned long long init[4]={0x12345ULL, 0x23456ULL, 0x34567ULL, 0x45678ULL};
@@ -9091,12 +9164,14 @@ long long *data1, *data2;
 			{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO
 			     if(no_copy_flag)
 			        async_read_no_copy(gc, (long long)fd, &buffer1, offset64,reclen,
 			    	  0LL,(numrecs64*reclen),depth);
 			     else
 				 async_read(gc, (long long)fd, nbuff, (offset64),reclen,
 					    	0LL,(numrecs64*reclen),0LL);
+#endif
 			  }
 			  else
 			  {
@@ -9117,9 +9192,11 @@ long long *data1, *data2;
 			if(verify){
 			  if(async_flag && no_copy_flag)
 			  {
+#ifdef ASYNC_IO
 				if(verify_buffer(buffer1,reclen,(off64_t)offset64/reclen,reclen,(long long)pattern,sverify)){
 					exit(71);
 				}
+#endif
 			  }
 			  else
 			  {
@@ -9128,8 +9205,10 @@ long long *data1, *data2;
 				}
 			  }
 			}
+#ifdef ASYNC_IO
 			if(async_flag && no_copy_flag)
 				async_release(gc);
+#endif
 			if(rlocking)
 			{
 				lock_offset=I_LSEEK(fd,0,SEEK_CUR);
@@ -9215,11 +9294,13 @@ long long *data1, *data2;
 				{
 			  		if(async_flag)
 					{
+#ifdef ASYNC_IO
 			     		   if(no_copy_flag)
 			       		      async_write_no_copy(gc, (long long)fd, nbuff, reclen, offset64, 
 					   	depth,free_addr);
 					   else
 			      			async_write(gc, (long long)fd, nbuff, reclen, offset64, depth);
+#endif
 			  		}
 			  		else
 			  		{
@@ -9389,7 +9470,9 @@ long long *data1,*data2;
 	off64_t lock_offset=0;
 	int fd,open_flags;
 	char *maddr,*wmaddr;
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	int ltest;
 	char *nbuff;
 #if defined(VXFS) || defined(solaris)
@@ -9398,7 +9481,7 @@ long long *data1,*data2;
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0; */
 #endif
 
 	maddr=wmaddr=0;
@@ -9528,12 +9611,14 @@ long long *data1,*data2;
 			else
 			if(async_flag)
 			{
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			       async_read_no_copy(gc, (long long)fd, &buffer1, ((((numrecs64-1)-i)*reclen)),
 			          reclen, -1LL,(numrecs64*reclen),depth);
 			    else
 			       async_read(gc, (long long)fd, nbuff, (((numrecs64-1)-i)*reclen),
 			       	  reclen,-1LL,(numrecs64*reclen),depth);
+#endif
 			}else
 			{
 				if(read((int)fd, (void*)nbuff, (size_t) reclen) != reclen)
@@ -9550,9 +9635,11 @@ long long *data1,*data2;
 			if(verify){
 			   if(async_flag && no_copy_flag)
 			   {
+#ifdef ASYNC_IO
 				if(verify_buffer(buffer1,reclen,(off64_t)(numrecs64-1)-i,reclen,(long long)pattern,sverify)){
 					exit(80);
 				}
+#endif
 			   }
 			   else
 			   {
@@ -9561,8 +9648,10 @@ long long *data1,*data2;
 				}
 			   }
 			}
+#ifdef ASYNC_IO
 			if(async_flag && no_copy_flag)
 				async_release(gc);
+#endif
 			if(rlocking)
 			{
 				mylockr((int) fd, (int) 0, (int)1,
@@ -9690,7 +9779,7 @@ long long *data1,*data2;
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0; */
 #endif
 
 	walltime=cputime=0;
@@ -9843,10 +9932,12 @@ long long *data1,*data2;
 		{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO
 			     if(no_copy_flag)
 			       async_write_no_copy(gc, (long long)fd, nbuff, reclen, (i*reclen), depth,free_addr);
 			     else
 			       async_write(gc, (long long)fd, nbuff, reclen, (i*reclen), depth);
+#endif
 			  }
 			  else
 			  {
@@ -9999,7 +10090,9 @@ long long *data1, *data2;
 	long long uu;
 	off64_t stripewrap=0;
 	int fd,open_flags;
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	char *nbuff;
 	char *maddr;
 	char *wmaddr;
@@ -10009,7 +10102,7 @@ long long *data1, *data2;
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0; */
 #endif
 
 	walltime=cputime=0;
@@ -10119,12 +10212,14 @@ long long *data1, *data2;
 		{
 			if(async_flag)
 			{
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, current_position,
 			      	reclen, stride,(numrecs64*reclen),depth);
 			    else
 			       async_read(gc, (long long)fd, nbuff, current_position, reclen,
 			    	 stride,(numrecs64*reclen),depth);
+#endif
 		   	}
 			else
 			{
@@ -10151,9 +10246,11 @@ long long *data1, *data2;
 		if(verify){
 			if(async_flag && no_copy_flag)
 			{
+#ifdef ASYNC_IO
 			   if(verify_buffer(buffer1,reclen, (off64_t)savepos64 ,reclen,(long long)pattern,sverify)){
 				exit(89);
 			   }
+#endif
 			}
 			else
 			{
@@ -10162,9 +10259,11 @@ long long *data1, *data2;
 			   }
 			}
 		}
+
+#ifdef ASYNC_IO
 		if(async_flag && no_copy_flag)
 			async_release(gc);
-			
+#endif			
 		/* This is a bit tricky.  The goal is to read with a stride through
 		   the file. The problem is that you need to touch all of the file
 		   blocks. So.. the first pass through you read with a constant stride.
@@ -12076,7 +12175,9 @@ int shared_flag;
 {
 	long long size1;
 	char *addr,*dumb;
+#ifdef SHARED_MEM
 	int shmid;
+#endif
 	int tfd;
 	long long tmp;
 #if defined(solaris) 
@@ -12198,7 +12299,7 @@ int shared_flag;
 		exit(122);
 	}
 	if(debug1)
-		printf("Got shared memory for size %d\n",size1);
+		printf("Got shared memory for size %lld\n",size1);
 
 	return(addr);
 #endif
@@ -12206,6 +12307,7 @@ int shared_flag;
 
 /************************************************************************/
 /* Implementation of poll() function.					*/
+/* input parameter time1 is in microseconds                             */
 /************************************************************************/
 #ifdef HAVE_ANSIC_C
 void Poll(long long time1)
@@ -12214,10 +12316,18 @@ void Poll(time1)
 long  long time1;
 #endif
 {
+#if defined(__rtems__)
+        rtems_interval ticks_per_second;
+        rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
+
+        rtems_task_wake_after(time1 * (ticks_per_second/1000000));
+#else
 	struct timeval howlong;
 	howlong.tv_sec=(int)(time1/100000);
 	howlong.tv_usec=(int)(time1%100000); /* Get into u.s. */
 	select(0, 0, 0, 0, &howlong);
+#endif
+        return;
 }
 
 /************************************************************************/
@@ -12404,7 +12514,7 @@ thread_write_test( x)
 	struct cache *gc=0;
 
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0;*/
 #endif
 
 	if(compute_flag)
@@ -12787,6 +12897,7 @@ again:
 		{
 		   if(async_flag)
 		   {
+#ifdef ASYNC_IO
 			     if(no_copy_flag)
 			     {
 				free_addr=nbuff=(char *)malloc((size_t)reclen+page_size);
@@ -12797,6 +12908,7 @@ again:
 			     }
 			     else
 				async_write(gc, (long long)fd, nbuff, reclen, (i*reclen), depth);
+#endif
 		   }
 		   else
 		   {
@@ -13731,7 +13843,7 @@ thread_rwrite_test(x)
 	struct cache *gc=0;
 
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0; */
 #endif
 
 	if(compute_flag)
@@ -14051,6 +14163,7 @@ fprintf(newstdout,"Chid: %lld Rewriting offset %lld for length of %lld\n",chid, 
 		{
 		   	if(async_flag)
 		   	{
+#ifdef ASYNC_IO
 			     if(no_copy_flag)
 			     {
 				free_addr=nbuff=(char *)malloc((size_t)reclen+page_size);
@@ -14061,6 +14174,7 @@ fprintf(newstdout,"Chid: %lld Rewriting offset %lld for length of %lld\n",chid, 
 			     }
 			     else
 				async_write(gc, (long long)fd, nbuff, reclen, (i*reclen), depth);
+#endif
 		   	}
 			else
 			{
@@ -14307,7 +14421,9 @@ thread_read_test(x)
 	char *maddr=0;
 	char *wmaddr=0;
 	char tmpname[256];
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	char now_string[30];
 	int anwser,bind_cpu;
 	long wval;
@@ -14317,7 +14433,7 @@ thread_read_test(x)
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0; */
 #endif
 
 	if(compute_flag)
@@ -14614,12 +14730,14 @@ thread_read_test(x)
 		{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, (i*reclen), reclen,
 			    	1LL,(numrecs64*reclen),depth);
 			    else
 			      async_read(gc, (long long)fd, nbuff, (i*reclen), reclen,
 			    	1LL,(numrecs64*reclen),depth);
+#endif
 			  }
 			  else
 			  {
@@ -14660,6 +14778,7 @@ thread_read_test(x)
 		if(verify){
 		   if(async_flag && no_copy_flag)
 		   {
+#ifdef ASYNC_IO
 			   if(verify_buffer(buffer1,reclen,(off64_t)i,reclen,(long long)pattern,sverify)){
 				if (!no_unlink)
 				{
@@ -14669,6 +14788,7 @@ thread_read_test(x)
 				child_stat->flag = CHILD_STATE_HOLD;
 				exit(133);
 			   }
+#endif
 		   }
 		   else
 		   {
@@ -14683,8 +14803,10 @@ thread_read_test(x)
 			   }
 		   }
 		}
+#ifdef ASYNC_IO
 		if(async_flag && no_copy_flag)
 			async_release(gc);
+#endif
 		read_so_far+=reclen/1024;
 		r_traj_bytes_completed+=reclen;
 		r_traj_ops_completed++;
@@ -15416,7 +15538,9 @@ thread_rread_test(x)
 	char *maddr=0;
 	char *wmaddr=0;
 	char now_string[30];
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	int anwser,bind_cpu;
 	long wval;
 	char tmpname[256];
@@ -15426,7 +15550,7 @@ thread_rread_test(x)
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0;*/
 #endif
 	/*****************/
 	/* Children only */
@@ -15721,12 +15845,14 @@ thread_rread_test(x)
 		{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, (i*reclen),reclen,
 			    	1LL,(filebytes64),depth);
 			    else
 			      async_read(gc, (long long)fd, nbuff, (i*reclen),reclen,
 			    	1LL,(filebytes64),depth);
+#endif
 			  }
 			  else
 			  {
@@ -15767,6 +15893,7 @@ thread_rread_test(x)
 		if(verify){
 		   if(async_flag && no_copy_flag)
 		   {
+#ifdef ASYNC_IO
 			if(verify_buffer(buffer1,reclen,(off64_t)i,reclen,(long long)pattern,sverify)){
 				if (!no_unlink)
 				{
@@ -15776,6 +15903,7 @@ thread_rread_test(x)
 				child_stat->flag = CHILD_STATE_HOLD;
 				exit(138);
 			}
+#endif
 		   }
 		   else
 		   {
@@ -15790,8 +15918,10 @@ thread_rread_test(x)
 			}
 		   }
 		}
+#ifdef ASYNC_IO
 		if(async_flag && no_copy_flag)
 			async_release(gc);
+#endif
 		re_read_so_far+=reclen/1024;
 		r_traj_bytes_completed+=reclen;
 		r_traj_ops_completed++;
@@ -15990,7 +16120,9 @@ thread_reverse_read_test(x)
 	char *maddr=0;
 	char *wmaddr=0;
 	char now_string[30];
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	int anwser,bind_cpu;
 	off64_t traj_offset;
 	char tmpname[256];
@@ -16002,7 +16134,7 @@ thread_reverse_read_test(x)
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv    long long *gc=0;*/
 #endif
 	/*****************/
 	/* Children only */
@@ -16277,12 +16409,14 @@ thread_reverse_read_test(x)
 		{
 			  if(async_flag)
 			  {
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, (current_position),
 			      	reclen, -1LL,(numrecs64*reclen),depth);
 			    else
 			      async_read(gc, (long long)fd, nbuff, (current_position),reclen,
 			    	-1LL,(numrecs64*reclen),depth);
+#endif
 			  }
 			  else
 			  {
@@ -16313,6 +16447,7 @@ thread_reverse_read_test(x)
 		if(verify){
 		   if(async_flag && no_copy_flag)
 		   {
+#ifdef ASYNC_IO
 			if(verify_buffer(buffer1,reclen,(off64_t)(current_position/reclen),reclen,(long long)pattern,sverify)){
 				if (!no_unlink)
 				{
@@ -16322,6 +16457,7 @@ thread_reverse_read_test(x)
 				child_stat->flag = CHILD_STATE_HOLD;
 				exit(145);
 			}
+#endif
 		   }
 		   else
 		   {
@@ -16342,8 +16478,10 @@ thread_reverse_read_test(x)
 			  lock_offset, reclen);
 		}
 		current_position+=reclen;
+#ifdef ASYNC_IO
 		if(async_flag && no_copy_flag)
 			async_release(gc);
+#endif
 		t_offset = (off64_t)reclen*2;
 		if (!(h_flag || k_flag || mmapflag))
 		{
@@ -16522,7 +16660,9 @@ thread_stride_read_test(x)
 	char *dummyfile[MAXSTREAMS];           /* name of dummy file     */
 	char *maddr=0;
 	char *wmaddr=0;
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	int anwser,bind_cpu;
 	off64_t traj_offset;
 	char tmpname[256];
@@ -16535,7 +16675,7 @@ thread_stride_read_test(x)
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0;*/
 #endif
 	/*****************/
 	/* Children only */
@@ -16784,12 +16924,14 @@ thread_stride_read_test(x)
 		{
 			if(async_flag)
 			{
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, (current_position),
 			      	reclen, stride,(numrecs64*reclen),depth);
 			    else
 			      async_read(gc, (long long)fd, nbuff, (current_position),reclen,
 			    	stride,(numrecs64*reclen),depth);
+#endif
 			}
 			else
 			{
@@ -16826,6 +16968,7 @@ thread_stride_read_test(x)
 		if(verify){
 		   if(async_flag && no_copy_flag)
 		   {
+#ifdef ASYNC_IO
 			if(verify_buffer(buffer1,reclen,(off64_t)savepos64,reclen,(long long)pattern,sverify)){
 				if (!no_unlink)
 				{
@@ -16835,6 +16978,7 @@ thread_stride_read_test(x)
 				child_stat->flag = CHILD_STATE_HOLD;
 				exit(150);
 			}
+#endif
 		   }
 		   else
 		   {
@@ -16849,8 +16993,10 @@ thread_stride_read_test(x)
 			}
 		   }
 		}
+#ifdef ASYNC_IO
 		if(async_flag && no_copy_flag)
 			async_release(gc);
+#endif
 		if(current_position + (stride * reclen) >= (numrecs64 * reclen)-reclen) 
 		{
 			current_position=0;
@@ -17130,7 +17276,9 @@ thread_ranread_test(x)
 	char *nbuff=0;
 	char *maddr=0;
 	char *wmaddr=0;
+#ifdef ASYNC_IO
 	volatile char *buffer1;
+#endif
 	int anwser,bind_cpu;
 	off64_t traj_offset;
 	off64_t lock_offset=0;
@@ -17150,7 +17298,7 @@ thread_ranread_test(x)
 #ifdef ASYNC_IO
 	struct cache *gc=0;
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0;*/
 #endif
 #ifdef MERSENNE
         unsigned long long init[4]={0x12345ULL, 0x23456ULL, 0x34567ULL, 0x45678ULL}, length=4;
@@ -17502,12 +17650,14 @@ thread_ranread_test(x)
 		{
 			if(async_flag)
 			{
+#ifdef ASYNC_IO
 			    if(no_copy_flag)
 			      async_read_no_copy(gc, (long long)fd, &buffer1, (current_offset),
 			      	 reclen, 0LL,(numrecs64*reclen),depth);
 			    else
 			      async_read(gc, (long long)fd, nbuff, (current_offset), reclen,
 			    	0LL,(numrecs64*reclen),depth);
+#endif
 			}
 			else
 			{
@@ -17547,6 +17697,7 @@ thread_ranread_test(x)
 		if(verify){
 		   if(async_flag && no_copy_flag)
 		   {
+#ifdef ASYNC_IO
 			if(verify_buffer(buffer1,reclen,(off64_t)save_pos,reclen,(long long)pattern,sverify)){
 				if (!no_unlink)
 				{
@@ -17556,6 +17707,7 @@ thread_ranread_test(x)
 				child_stat->flag = CHILD_STATE_HOLD;
 				exit(161);
 			}
+#endif
 		   }
 		   else
 		   {
@@ -17570,8 +17722,10 @@ thread_ranread_test(x)
 			}
 		   }
 		}
+#ifdef ASYNC_IO
 		if(async_flag && no_copy_flag)
 			async_release(gc);
+#endif
 		ranread_so_far+=reclen/1024;
 		if(*stop_flag)
 		{
@@ -17754,7 +17908,9 @@ thread_ranwrite_test( x)
 	char *nbuff=0;
 	char *maddr=0;
 	char *wmaddr=0;
+#ifdef ASYNC_IO
 	char *free_addr=0;
+#endif
 	int anwser,bind_cpu,wval;
 	off64_t filebytes64;
 	off64_t lock_offset=0;
@@ -17773,9 +17929,8 @@ thread_ranwrite_test( x)
 
 #ifdef ASYNC_IO
 	struct cache *gc=0;
-
 #else
-	long long *gc=0;
+/* igorv	long long *gc=0;*/
 #endif
 #ifdef MERSENNE
         unsigned long long init[4]={0x12345ULL, 0x23456ULL, 0x34567ULL, 0x45678ULL}, length=4;
@@ -18166,6 +18321,7 @@ again:
 		{
 		   if(async_flag)
 		   {
+#ifdef ASYNC_IO
 			     if(no_copy_flag)
 			     {
 				free_addr=nbuff=(char *)malloc((size_t)reclen+page_size);
@@ -18176,6 +18332,7 @@ again:
 			     }
 			     else
 				async_write(gc, (long long)fd, nbuff, reclen, current_offset, depth);
+#endif
 		   }
 		   else
 		   {
@@ -19071,7 +19228,7 @@ long long length;
 	bcopy((void *)src_buffer,(void *)dest_buffer,(size_t)length);
 }
 
-#ifndef ASYNC_IO
+#ifdef ASYNC_IO
 int
 async_read()
 {
@@ -19122,13 +19279,23 @@ my_nap( ntime )
 int ntime;
 #endif
 {
+#if defined(__rtems__)
+        rtems_interval ticks_per_second;
+        rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
+
+        rtems_task_wake_after(ntime * (ticks_per_second/1000000));
+#else
 	struct timeval nap_time;
 	int seconds, microsecs;
 	seconds = ntime/1000; /* Now in seconds */
 	microsecs = (ntime*1000)%1000000;  /* Remaining microsecs */
+
 	nap_time.tv_sec=seconds;
         nap_time.tv_usec=microsecs;
+
         select(0,0,0,0,&nap_time);
+#endif
+        return;
 }
 /************************************************************************/
 /* Nap in microseconds.							*/
@@ -19248,7 +19415,6 @@ get_rusage_resolution()
 /* Time measurement routines.						*/
 /* Return time in microseconds						*/
 /************************************************************************/
-
 #ifdef HAVE_ANSIC_C
 static double
 time_so_far1(void)
@@ -19269,9 +19435,13 @@ time_so_far1()
   	struct timeval tp;
 
   	if(pit_hostname[0]){
+#ifdef PIT_ENABLED
   	   pit_gettimeofday(&tp, (struct timezone *) NULL, pit_hostname, 
 		pit_service);
 	   return ((double) (tp.tv_sec)*1000000.0)+(((double)tp.tv_usec));
+#else
+           return 0;
+#endif
 	}
 	else
 	{	
@@ -19295,10 +19465,14 @@ time_so_far1()
   struct timeval tp;
 
   if(pit_hostname[0]){
+#ifdef PIT_ENABLED
      if (pit_gettimeofday(&tp, (struct timezone *) NULL, pit_hostname, 
 		pit_service) == -1)
         perror("pit_gettimeofday");
      return ((double) (tp.tv_sec)*1000000.0) + (((double) tp.tv_usec) );
+#else
+     return 0;
+#endif
   }
   else
   {
@@ -20256,7 +20430,7 @@ off64_t size;
 	return((off64_t)0);
 }
 
-
+#ifdef NET_BENCH
 /*
  * Socket based communication mechanism.
  * It's intended use is to be the communication mechanism
@@ -22747,6 +22921,9 @@ cleanup_comm()
         	close(master_send_async_sockets[i]);
 	}
 }
+#if 0
+///#endif /*TODO: NET_BENCH - is this the end ??? */
+#endif
 
 #ifdef HAVE_ANSIC_C
 void
@@ -23599,6 +23776,9 @@ int client_flag;
 	}
 }
 
+#endif /* TODO:NET_BENCH - may be the end here ??? */
+
+
 #ifdef HAVE_ANSIC_C
 void
 get_date(char *where)
@@ -24051,6 +24231,8 @@ int main(void)
 }
 #endif
 
+
+#ifdef PIT_ENABLED
 /*----------------------------------------------------------------------*/
 /* 									*/
 /* The PIT Programmable Interdimensional Timer 				*/
@@ -24250,7 +24432,9 @@ static void pit( int sckt, struct timeval *tp)
    sscanf(bfr,"%llu\n",&value);
    tp->tv_sec = (long)(value / 1000000);
    tp->tv_usec = (long)(value % 1000000);
-}  
+}
+
+#endif /* PIT_ENABLED*/
 
 /* sync does not exist in SUA */
 #if defined(_SUA_)
