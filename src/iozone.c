@@ -63,10 +63,13 @@
 #define THISVERSION "        Version $Revision: 3.398 $"
 
 /* The next functionalilties are disabled because of platform limitations */
+/* #define NO_THREADS */
 #undef PIT_ENABLED
 #undef NET_BENCH
 #undef ASYNC_IO
 #undef SHARED_MEM
+#undef MIX_PERF_TEST
+#undef EXCEL
 
 #if defined(linux)
   #define _GNU_SOURCE
@@ -1076,7 +1079,9 @@ void write_perf_test();		/* write/rewrite test		  */
 void fwrite_perf_test();	/* fwrite/refwrite test		  */
 void fread_perf_test();		/* fread/refread test		  */
 void read_perf_test();		/* read/reread test		  */
+#ifdef MIX_PERF_TEST
 void mix_perf_test();		/* read/reread test		  */
+#endif
 void random_perf_test();	/* random read/write test	  */
 void reverse_perf_test();	/* reverse read test		  */
 void rewriterec_perf_test();	/* rewrite record test		  */
@@ -1130,15 +1135,22 @@ void async_init();
 //void async_release();
 #endif
 
+#ifdef EXCEL
 void do_float();
 int create_xls();
 void close_xls();
 void do_label();
+#endif
+
 int mylockf(int, int, int);
 int mylockr(int,int, int, off64_t, off64_t);
 int rand(void);
 void srand(unsigned int);
+
+#ifdef NET_BRANCH
 int get_client_info(void);
+#endif
+
 void exit(int);
 void find_remote_shell(char *);
 void find_external_mon(char *,char *);
@@ -1213,10 +1225,14 @@ int system();
 void my_nap();
 void my_unap();
 int thread_exit();
+
+#ifdef EXCELL
 void close_xls();
 void do_label();
 int create_xls();
 void do_float();
+#endif
+
 #ifdef ASYNC_IO
 void async_release();
 size_t async_write();
@@ -1229,7 +1245,11 @@ int mylockf();
 int mylockr();
 int rand();
 void srand();
+
+#ifdef NET_BRANCH
 int get_client_info();
+#endif
+
 void exit();
 void find_remote_shell();
 void traj_vers();
@@ -1307,7 +1327,9 @@ void (*func[])() = {
 			read_stride_perf_test,
 			fwrite_perf_test,
 			fread_perf_test,
+#ifdef MIX_PERF_TEST
 			mix_perf_test 
+#endif
 #ifdef HAVE_PREAD
 			,
 			pwrite_perf_test,
@@ -1658,6 +1680,10 @@ long long rest_val;
  * Sort of... Full prototypes break non-ansi C compilers. No protos is 
  * a bit sloppy, so the compromise is this.
  */
+long long start_child_proc();
+int check_filename();
+
+#ifdef NET_BENCH
 void child_send();
 int start_child_listen();
 int start_child_listen_async();
@@ -1670,21 +1696,24 @@ void cleanup_comm();
 void master_send();
 int start_master_send();
 int start_master_listen();
-int check_filename();
 void master_listen();
 void stop_master_send();
 void stop_master_listen();
-long long start_child_proc();
 int parse_client_line();
 void wait_dist_join();
 void tell_children_begin();
+
 void start_master_listen_loop();
+
 void wait_for_master_go();
 void tell_master_ready();
 void stop_master_listen_loop();
 void tell_master_stats();
 void become_client();
 int pick_client();
+
+#if 0
+/* double */
 long long start_child_proc();
 int start_master_send();
 void child_listen();
@@ -1697,11 +1726,14 @@ void master_send();
 void child_send();
 void master_listen();
 int start_master_listen();
+#endif
+
 void child_remove_files();
 void terminate_child_async();
 void distribute_stop();
 void send_stop();
 void cleanup_children();
+#endif
 
 
 /****************************************************************/
@@ -1718,7 +1750,9 @@ char **argv;
 
 	long long fileindx,i,tval;
 	long long ind;
+#ifdef NET_BRANCH
 	int ret;
+#endif
 	FILE *pi;
 	char reply[IBUFSIZE];
 	unsigned char inp_pat;
@@ -1734,7 +1768,7 @@ char **argv;
 	/* Used to make fread/fwrite do something better than their defaults */
 	setvbuf( stdout, NULL, _IONBF, (size_t) NULL );
 	setvbuf( stderr, NULL, _IONBF, (size_t) NULL );
-	
+/* TODO: gethostname, getenv */	
 	/* Save the master's name */
 	gethostname(controlling_host_name,100);
 
@@ -2514,6 +2548,7 @@ char **argv;
                                         break;
 				case 'm':  /* I am the controlling process for distributed Iozone */
 					   /* Does not have an argument */
+#ifdef NET_BRANCH
 					subarg=argv[optind++];
 					if(subarg==(char *)0)
 					{
@@ -2532,6 +2567,7 @@ char **argv;
 					master_iozone=1;
 					client_iozone=0;
 					sprintf(splash[splash_line++],"\tNetwork distribution mode enabled.\n");
+#endif
 					break;
 				case 'N':  /* turn off truncating the file before write test */
 					notruncate = 1;
@@ -3443,11 +3479,13 @@ void signal_handler()
 #endif
 {
 	long long i;
+#ifdef NET_BENCH
 	if(distributed)
 	{
 		if(master_iozone)
 			cleanup_children();
 	}
+#endif
 	if((long long)getpid()==myid)
 	{
     		if(!silent) printf("\niozone: interrupted\n\n");
@@ -3751,11 +3789,13 @@ throughput_test()
 	/* Hooks to start the distributed Iozone client/server code */
 	if(distributed)
 	{
+#ifdef NET_BENCH
 		use_thread=0;  /* Turn of any Posix threads */
 		if(master_iozone)
 			master_listen_socket = start_master_listen();
 		else
 			become_client();
+#endif
 	}
 	if(!use_thread)
 	{
@@ -3833,7 +3873,9 @@ throughput_test()
 				/* wait for children to start */
 		if(distributed && master_iozone)
 		{
+#ifdef NET_BENCH
 			start_master_listen_loop((int) num_child);
+#endif
 		}
 		for(i=0;i<num_child; i++){
 			child_stat = (struct child_stats *)&shmaddr[i];	
@@ -3847,8 +3889,10 @@ throughput_test()
 						/* State "go" */
 			child_stat = (struct child_stats *)&shmaddr[i];	
 			child_stat->flag=CHILD_STATE_BEGIN;
+#ifdef NET_BENCH
 			if(distributed && master_iozone)
 				tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();	/* Start parents timer */
 		goto waitout;
@@ -3863,7 +3907,9 @@ waitout:
 			if(distributed && master_iozone)
 			{
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
 				wait_dist_join();
+#endif
 				break;
 			}
 			else
@@ -3996,11 +4042,13 @@ waitout:
 	if(restf)
 		sleep((int)rest_val);
 	*stop_flag=0;
+#ifdef NET_BENCH
 	if(distributed && master_iozone)
 	{
 		stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 
 	/**********************************************************/
 	/* Re-write throughput performance test. ******************/
@@ -4021,11 +4069,13 @@ waitout:
 	/* Hooks to start the distributed Iozone client/server code */
 	if(distributed)
 	{
+#ifdef NET_BENCH
 		use_thread=0;  /* Turn of any Posix threads */
 		if(master_iozone)
 			master_listen_socket = start_master_listen();
 		else
 			become_client();
+#endif
 	}
 	if(!use_thread)
 	{
@@ -4081,7 +4131,9 @@ waitout:
 	{
 		if(distributed && master_iozone)
 		{
+#ifdef NET_BENCH
 			start_master_listen_loop((int) num_child);
+#endif
 		}
 		for(i=0;i<num_child; i++){
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -4095,8 +4147,10 @@ waitout:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
 			if(distributed && master_iozone)
 				tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 		goto jump3;
@@ -4110,7 +4164,9 @@ jump3:
 			if(distributed && master_iozone)
 			{
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
 				wait_dist_join();
+#endif
 				break;
 			}
 			else
@@ -4244,11 +4300,13 @@ jump3:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
 	if(distributed && master_iozone)
 	{
 		stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 next0:
 	if(include_tflag)
 		if(!(include_mask & (long long)READER_MASK))
@@ -4266,11 +4324,13 @@ next0:
 	total_kilos=0;
 	if(distributed)
 	{
+#ifdef NET_BENCH
 		use_thread=0;
 		if(master_iozone)
 			master_listen_socket=start_master_listen();
 		else
 			become_client();
+#endif
 	}
 	if(!use_thread)
 	{
@@ -4325,7 +4385,9 @@ next0:
 	if(myid == (long long)getpid()){
 		if(distributed && master_iozone)
 		{
+#ifdef NET_BENCH
 			start_master_listen_loop((int) num_child);
+#endif
 		}
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat=(struct child_stats *)&shmaddr[i];
@@ -4338,8 +4400,10 @@ next0:
 			child_stat->flag = CHILD_STATE_BEGIN; /* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
 			if(distributed && master_iozone)
 				tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 		goto jumpend4;
@@ -4352,7 +4416,9 @@ jumpend4:
 			if(distributed && master_iozone)
 			{
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
 				wait_dist_join();
+#endif
 				break;
 			}
 			else
@@ -4474,11 +4540,13 @@ jumpend4:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
 	if(distributed && master_iozone)
 	{
 		stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 
 	/**************************************************************/
 	/*** ReReader throughput tests **********************************/
@@ -4500,11 +4568,13 @@ jumpend4:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -4560,7 +4630,9 @@ jumpend4:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -4572,8 +4644,10 @@ jumpend4:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 		goto jumpend2;
@@ -4587,7 +4661,9 @@ jumpend2:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -4712,12 +4788,13 @@ jumpend2:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
-
+#endif
 next1:
 	if(include_tflag)
 		if(!(include_mask & (long long)REVERSE_MASK))
@@ -4740,11 +4817,13 @@ next1:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -4800,7 +4879,9 @@ next1:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -4812,8 +4893,10 @@ next1:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -4825,7 +4908,9 @@ next1:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -4948,11 +5033,13 @@ next1:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 next2:
 	if(include_tflag)
 		if(!(include_mask & (long long)STRIDE_READ_MASK))
@@ -4974,11 +5061,13 @@ next2:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -5034,7 +5123,9 @@ next2:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -5046,8 +5137,10 @@ next2:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -5059,7 +5152,9 @@ next2:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -5182,11 +5277,13 @@ next2:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 	/**************************************************************/
 	/*** random reader throughput tests ***************************/
 	/**************************************************************/
@@ -5209,11 +5306,13 @@ next3:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -5269,7 +5368,9 @@ next3:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -5281,8 +5382,10 @@ next3:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -5294,7 +5397,9 @@ next3:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -5412,11 +5517,13 @@ next3:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 	/**************************************************************/
 	/***  mixed workload throughput tests ***************************/
 	/**************************************************************/
@@ -5439,11 +5546,13 @@ next4:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -5499,7 +5608,9 @@ next4:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -5511,8 +5622,10 @@ next4:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -5524,7 +5637,9 @@ next4:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -5642,11 +5757,13 @@ next4:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 next5:
 	/**************************************************************/
 	/*** random writer throughput tests  **************************/
@@ -5669,11 +5786,13 @@ next5:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -5729,7 +5848,9 @@ next5:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -5741,8 +5862,10 @@ next5:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -5754,7 +5877,9 @@ next5:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -5872,11 +5997,13 @@ next5:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 next6:
 	/**************************************************************/
 	/*** Pwrite writer throughput tests  **************************/
@@ -5902,11 +6029,13 @@ next6:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -5962,7 +6091,9 @@ next6:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -5974,8 +6105,10 @@ next6:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -5987,7 +6120,9 @@ next6:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -6105,11 +6240,13 @@ next6:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 #endif
 	/**************************************************************/
 	/*** Pread reader throughput tests  **************************/
@@ -6137,11 +6274,13 @@ next7:
         /* Hooks to start the distributed Iozone client/server code */
         if(distributed)
         {
+#ifdef NET_BENCH
                 use_thread=0;  /* Turn of any Posix threads */
                 if(master_iozone)
                         master_listen_socket = start_master_listen();
                 else
                         become_client();
+#endif
         }
 	if(!use_thread)
 	{
@@ -6197,7 +6336,9 @@ next7:
 	if(myid == (long long)getpid()){
                 if(distributed && master_iozone)
                 {
+#ifdef NET_BENCH
                         start_master_listen_loop((int) num_child);
+#endif
                 }
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat = (struct child_stats *)&shmaddr[i];
@@ -6209,8 +6350,10 @@ next7:
 			child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
                        if(distributed && master_iozone)
                                 tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 	}
@@ -6222,7 +6365,9 @@ next7:
                         if(distributed && master_iozone)
                         {
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
                                 wait_dist_join();
+#endif
                                 break;
                         }
                         else
@@ -6340,11 +6485,13 @@ next7:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
         if(distributed && master_iozone)
 	{
                 stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 #endif
 next8:
 	if(include_tflag)
@@ -6363,11 +6510,13 @@ next8:
 	total_kilos=0;
 	if(distributed)
 	{
+#ifdef NET_BENCH
 		use_thread=0;
 		if(master_iozone)
 			master_listen_socket=start_master_listen();
 		else
 			become_client();
+#endif
 	}
 	if(!use_thread)
 	{
@@ -6422,7 +6571,9 @@ next8:
 	if(myid == (long long)getpid()){
 		if(distributed && master_iozone)
 		{
+#ifdef NET_BENCH
 			start_master_listen_loop((int) num_child);
+#endif
 		}
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat=(struct child_stats *)&shmaddr[i];
@@ -6435,8 +6586,10 @@ next8:
 			child_stat->flag = CHILD_STATE_BEGIN; /* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
 			if(distributed && master_iozone)
 				tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 		goto jumpend1;
@@ -6449,7 +6602,9 @@ jumpend1:
 			if(distributed && master_iozone)
 			{
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
 				wait_dist_join();
+#endif
 				break;
 			}
 			else
@@ -6571,11 +6726,13 @@ jumpend1:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
 	if(distributed && master_iozone)
 	{
 		stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 next9:
 	if(include_tflag)
 		if(!(include_mask & (long long)FREADER_MASK))
@@ -6593,11 +6750,13 @@ next9:
 	total_kilos=0;
 	if(distributed)
 	{
+#ifdef NET_BENCH
 		use_thread=0;
 		if(master_iozone)
 			master_listen_socket=start_master_listen();
 		else
 			become_client();
+#endif
 	}
 	if(!use_thread)
 	{
@@ -6652,7 +6811,9 @@ next9:
 	if(myid == (long long)getpid()){
 		if(distributed && master_iozone)
 		{
+#ifdef NET_BENCH
 			start_master_listen_loop((int) num_child);
+#endif
 		}
 		for(i=0;i<num_child; i++){ /* wait for children to start */
 			child_stat=(struct child_stats *)&shmaddr[i];
@@ -6665,8 +6826,10 @@ next9:
 			child_stat->flag = CHILD_STATE_BEGIN; /* tell children to go */
 			if(delay_start!=0)
 				Poll((long long)delay_start);
+#ifdef NET_BENCH
 			if(distributed && master_iozone)
 				tell_children_begin(i);
+#endif
 		}
 		starttime1 = time_so_far();
 		goto jumpend3;
@@ -6679,7 +6842,9 @@ jumpend3:
 			if(distributed && master_iozone)
 			{
 				printf("\n\tTest running:");
+#ifdef NET_BENCH
 				wait_dist_join();
+#endif
 				break;
 			}
 			else
@@ -6801,11 +6966,13 @@ jumpend3:
 	sleep(2);
 	if(restf)
 		sleep((int)rest_val);
+#ifdef NET_BENCH
 	if(distributed && master_iozone)
 	{
 		stop_master_listen(master_listen_socket);
 		cleanup_comm();
 	}
+#endif
 next10:
 	sleep(2); /* You need this. If you stop and restart the 
 		     master_listen it will fail on Linux */
@@ -6819,11 +6986,13 @@ next10:
 		/* Hooks to start the distributed Iozone client/server code */
 		if(distributed)
 		{
+#ifdef NET_BENCH
 			use_thread=0;  /* Turn of any Posix threads */
 			if(master_iozone)
 				master_listen_socket = start_master_listen();
 			else
 				become_client();
+#endif
 		}
 		if(!use_thread)
 		{
@@ -6869,7 +7038,9 @@ next10:
 		{
 			if(distributed && master_iozone)
 			{
+#ifdef NET_BENCH
 				start_master_listen_loop((int) num_child);
+#endif
 			}
 			for(i=0;i<num_child; i++){
 				child_stat = (struct child_stats *)&shmaddr[i];
@@ -6883,8 +7054,10 @@ next10:
 				child_stat->flag = CHILD_STATE_BEGIN;	/* tell children to go */
 				if(delay_start!=0)
 					Poll((long long)delay_start);
+#ifdef NET_BENCH
 				if(distributed && master_iozone)
 					tell_children_begin(i);
+#endif
 			}
 		}
 	
@@ -6895,7 +7068,9 @@ next10:
 				if(distributed && master_iozone)
 				{
 					printf("\n\tTest cleanup:");
+#ifdef NET_BENCH
 					wait_dist_join();
+#endif
 					break;
 				}
 				else
@@ -6918,6 +7093,7 @@ next10:
 		}
 		sync();
 		sleep(2);
+#ifdef NET_BENCH
 		if(distributed && master_iozone)
 		{
 			stop_master_listen(master_listen_socket);
@@ -6927,6 +7103,7 @@ next10:
 #endif
 			cleanup_comm();
 		}
+#endif
 	}
 	/********************************************************/
 	/* End of cleanup					*/
@@ -11706,6 +11883,7 @@ double walltime, cputime;
 	runtimes [current_x][current_y].cpuutil  = cpu_util(cputime, walltime);
 }
 
+#ifdef EXCELL
 /************************************************************************/
 /* dump_report()							*/
 /* Dumps the Excel report on standard output.				*/
@@ -12159,6 +12337,7 @@ void dump_cputimes(void)
 	}
 #endif
 }
+#endif /* EXCEL */
 
 /************************************************************************/
 /* Internal memory allocation mechanism. Uses shared memory or mmap 	*/
@@ -12664,8 +12843,10 @@ thread_write_test( x)
 	if((fd = I_OPEN(dummyfile[xx], (int)flags,0640))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		printf("\nCan not open temp file: %s\n", 
 			filename);
 		perror("open");
@@ -12724,10 +12905,13 @@ thread_write_test( x)
 	child_stat->throughput = 0;
 	child_stat->actual = 0;
 	child_stat->flag=CHILD_STATE_READY; /* Tell parent child is ready to go */
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		tell_master_ready(chid);
+#endif
 	if(distributed && client_iozone)
 	{
+#ifdef NET_BENCH
 		if(cdebug)
 		{
 			fprintf(newstdout,"Child %d waiting for go from master\n",(int)xx);
@@ -12739,6 +12923,7 @@ thread_write_test( x)
 			fprintf(newstdout,"Child %d received go from master\n",(int)xx);
 			fflush(newstdout);
 		}
+#endif
 	}
 	else
 	{
@@ -12761,8 +12946,10 @@ thread_write_test( x)
 		if(thread_wqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -12775,8 +12962,10 @@ thread_write_test( x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -12843,8 +13032,10 @@ thread_write_test( x)
 			  if((fd = I_OPEN(dummyfile[xx], (int)flags,0))<0)
 			  {
 				client_error=errno;
+#ifdef NET_BENCH
 				if(distributed && client_iozone)
 					send_stop();
+#endif
 				printf("\nCan not open temp file: %s\n", 
 					filename);
 				perror("open");
@@ -13041,8 +13232,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	
 	if(include_flush)
@@ -13098,13 +13291,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		tell_master_stats(THREAD_WRITE_TEST, chid, child_stat->throughput, 
 			child_stat->actual, 
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
 			(long long)CHILD_STATE_HOLD);
-			
+#endif			
 	if (debug1) {
 		printf(" child/slot: %lld, wall-cpu: %8.3f %8.3fC" " -> %6.2f%%\n",
 			xx, walltime, cputime,
@@ -13319,8 +13513,10 @@ thread_pwrite_test( x)
 		if((fd = I_CREAT(dummyfile[xx], 0640))<0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			perror(dummyfile[xx]);
 			exit(123);
 		}
@@ -13352,8 +13548,10 @@ thread_pwrite_test( x)
 	if((fd = I_OPEN(dummyfile[xx], (int)flags,0640))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		printf("\nCan not open temp file: %s\n", 
 			filename);
 		perror("open");
@@ -13409,10 +13607,13 @@ thread_pwrite_test( x)
 	child_stat->throughput = 0;
 	child_stat->actual = 0;
 	child_stat->flag=CHILD_STATE_READY; /* Tell parent child is ready to go */
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		tell_master_ready(chid);
+#endif
 	if(distributed && client_iozone)
 	{
+#ifdef NET_BENCH
 		if(cdebug)
 		{
 			fprintf(newstdout,"Child %d waiting for go from master\n",(int)xx);
@@ -13424,6 +13625,7 @@ thread_pwrite_test( x)
 			fprintf(newstdout,"Child %d received go from master\n",(int)xx);
 			fflush(newstdout);
 		}
+#endif
 	}
 	else
 	{
@@ -13446,8 +13648,10 @@ thread_pwrite_test( x)
 		if(thread_wqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -13460,8 +13664,10 @@ thread_pwrite_test( x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -13679,8 +13885,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	
 	if(include_flush)
@@ -13731,13 +13939,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		tell_master_stats(THREAD_PWRITE_TEST, chid, child_stat->throughput, 
 			child_stat->actual, 
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
 			(long long)CHILD_STATE_HOLD);
-			
+#endif		
 	if (debug1) {
 		printf(" child/slot: %lld, wall-cpu: %8.3f %8.3fC" " -> %6.2f%%\n",
 			xx, walltime, cputime,
@@ -13976,8 +14185,10 @@ thread_rwrite_test(x)
 	if((fd = I_OPEN(dummyfile[xx], (int)flags,0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 #ifdef NO_PRINT_LLD
 		printf("\nChild %ld\n",xx);
 #else
@@ -14035,8 +14246,10 @@ thread_rwrite_test(x)
 		{
 			printf("Unable to open %s\n",tmpname);
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			exit(40);
 		}
 		fprintf(thread_rwqfd,"Offset in Kbytes   Latency in microseconds  Transfer size in bytes\n");
@@ -14048,8 +14261,10 @@ thread_rwrite_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -14057,10 +14272,13 @@ thread_rwrite_test(x)
 		fprintf(thread_Lwqfd,"%-25s %s","Rewrite test start: ",now_string);
 	}
 	child_stat->flag = CHILD_STATE_READY;
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		tell_master_ready(chid);
+#endif
 	if(distributed && client_iozone)
 	{
+#ifdef NET_BENCH
 		if(cdebug)
 		{
 			fprintf(newstdout,"Child %d waiting for go from master\n",(int)xx);
@@ -14072,6 +14290,7 @@ thread_rwrite_test(x)
 			fprintf(newstdout,"Child %d received go from master\n",(int)xx);
 			fflush(newstdout);
 		}
+#endif
 	}
 	else
 	{
@@ -14307,8 +14526,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	if(cdebug)
 	{
@@ -14325,12 +14546,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		tell_master_stats(THREAD_REWRITE_TEST, chid, child_stat->throughput, 
 			child_stat->actual,
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
 			(long long)CHILD_STATE_HOLD);
+#endif
 	child_stat->flag = CHILD_STATE_HOLD;	/* Tell parent I'm done */
 	if(!include_close)
 	{
@@ -14545,8 +14768,10 @@ thread_read_test(x)
 	if((fd = I_OPEN(dummyfile[xx], (int)flags,0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		perror(dummyfile[xx]);
 		exit(130);
 	}
@@ -14615,8 +14840,10 @@ thread_read_test(x)
 		if(thread_rqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -14629,8 +14856,10 @@ thread_read_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -14646,8 +14875,10 @@ thread_read_test(x)
 	child_stat->flag = CHILD_STATE_READY;
 	if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
 		tell_master_ready(chid);
                 wait_for_master_go(chid);
+#endif
         }
         else
         {
@@ -14901,8 +15132,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
         if(cdebug)
 	{
@@ -14919,12 +15152,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_READ_TEST, chid, child_stat->throughput,
                         child_stat->actual, 
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
+#endif
 	child_stat->flag = CHILD_STATE_HOLD; 	/* Tell parent I'm done */
 	/*fsync(fd);*/
 	if(!include_close)
@@ -15112,8 +15347,10 @@ thread_pread_test(x)
 	if((fd = I_OPEN(dummyfile[xx], (int)flags,0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		perror(dummyfile[xx]);
 		exit(130);
 	}
@@ -15179,8 +15416,10 @@ thread_pread_test(x)
 		if(thread_rqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -15193,8 +15432,10 @@ thread_pread_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -15210,8 +15451,10 @@ thread_pread_test(x)
 	child_stat->flag = CHILD_STATE_READY;
 	if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
 		tell_master_ready(chid);
                 wait_for_master_go(chid);
+#endif
         }
         else
         {
@@ -15428,8 +15671,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
         if(cdebug)
 	{
@@ -15446,12 +15691,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_READ_TEST, chid, child_stat->throughput,
                         child_stat->actual,
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
+#endif
 	child_stat->flag = CHILD_STATE_HOLD; 	/* Tell parent I'm done */
 	/*fsync(fd);*/
 	if(!include_close)
@@ -15680,8 +15927,10 @@ thread_rread_test(x)
 	if((fd = I_OPEN(dummyfile[xx], ((int)flags),0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		perror(dummyfile[xx]);
 		exit(135);
 	}
@@ -15732,8 +15981,10 @@ thread_rread_test(x)
                 if(thread_rrqfd==0)
                 {
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -15746,8 +15997,10 @@ thread_rread_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -15762,8 +16015,10 @@ thread_rread_test(x)
 
 	if(distributed && client_iozone)
 	{
+#ifdef NET_BENCH
 		tell_master_ready(chid);
 		wait_for_master_go(chid);
+#endif
 	}
 	else
 	
@@ -16016,8 +16271,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	if(cpuutilflag)
 	{
@@ -16028,6 +16285,7 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 	{
 		tell_master_stats(THREAD_REREAD_TEST,chid, child_stat->throughput,
@@ -16036,6 +16294,7 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 			(char)*stop_flag,
 			(long long)CHILD_STATE_HOLD);
 	}
+#endif
 	child_stat->flag = CHILD_STATE_HOLD;	/* Tell parent I'm done */
 	if(!include_close)
 	{
@@ -16250,8 +16509,10 @@ thread_reverse_read_test(x)
 	if((fd = I_OPEN(dummyfile[xx], ((int)flags),0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		perror(dummyfile[xx]);
 		exit(140);
 	}
@@ -16297,8 +16558,10 @@ thread_reverse_read_test(x)
                 if(thread_revqfd==0)
                 {
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -16311,8 +16574,10 @@ thread_reverse_read_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -16325,8 +16590,10 @@ thread_reverse_read_test(x)
 	child_stat->flag = CHILD_STATE_READY;
         if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
                 tell_master_ready(chid);
                 wait_for_master_go(chid);
+#endif
         }
         else
         {
@@ -16348,8 +16615,10 @@ thread_reverse_read_test(x)
 	  	if((I_LSEEK( fd, -t_offset, SEEK_END ))<0)
 	  	{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			perror("lseek");
 			exit(142);
 	  	}
@@ -16359,8 +16628,10 @@ thread_reverse_read_test(x)
 		if(I_LSEEK( fd, (numrecs64*reclen)-t_offset, SEEK_SET )<0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			perror("lseek");
 			exit(77);
 		}
@@ -16565,8 +16836,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	if(cpuutilflag)
 	{
@@ -16577,12 +16850,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_REVERSE_READ_TEST, chid, child_stat->throughput,
                         child_stat->actual,
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
 			(long long)CHILD_STATE_HOLD);
+#endif
 	child_stat->flag = CHILD_STATE_HOLD;	/* Tell parent I'm done */
 	if(!include_close)
 	{
@@ -16790,8 +17065,10 @@ thread_stride_read_test(x)
 	if((fd = I_OPEN(dummyfile[xx], ((int)flags),0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		perror(dummyfile[xx]);
 		exit(147);
 	}
@@ -16838,8 +17115,10 @@ thread_stride_read_test(x)
                 if(thread_strqfd==0)
                 {
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -16852,8 +17131,10 @@ thread_stride_read_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -16867,8 +17148,10 @@ thread_stride_read_test(x)
 	child_stat->flag = CHILD_STATE_READY;
         if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
                 tell_master_ready(chid);
                 wait_for_master_go(chid);
+#endif
         }
         else
 
@@ -17016,8 +17299,10 @@ thread_stride_read_test(x)
 			  if(I_LSEEK(fd,current_position,SEEK_SET)<0)
 			  {
 				client_error=errno;
+#ifdef NET_BENCH
 				if(distributed && client_iozone)
 					send_stop();
+#endif
 				perror("lseek");
 				exit(152);
 			  }
@@ -17031,8 +17316,10 @@ thread_stride_read_test(x)
 			  if(I_LSEEK(fd,current_position,SEEK_SET)<0)
 			  {
 				client_error=errno;
+#ifdef NET_BENCH
 				if(distributed && client_iozone)
 					send_stop();
+#endif
 				perror("lseek");
 				exit(154);
 			  };
@@ -17115,8 +17402,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	if(cpuutilflag)
 	{
@@ -17127,6 +17416,7 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
         if(distributed && client_iozone)
         {
                 tell_master_stats(THREAD_STRIDE_TEST,chid, child_stat->throughput,
@@ -17135,6 +17425,7 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 			(char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
         }
+#endif
 	child_stat->flag = CHILD_STATE_HOLD;	/* Tell parent I'm done */
 	if(!include_close)
 	{
@@ -17452,8 +17743,10 @@ thread_ranread_test(x)
 	if((fd = I_OPEN(dummyfile[xx], ((int)flags),0))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		perror(dummyfile[xx]);
 		exit(156);
 	}
@@ -17523,8 +17816,10 @@ thread_ranread_test(x)
                 if(thread_randrfd==0)
                 {
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -17537,8 +17832,10 @@ thread_ranread_test(x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -17550,8 +17847,10 @@ thread_ranread_test(x)
 	child_stat->flag = CHILD_STATE_READY;
         if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
                 tell_master_ready(chid);
                 wait_for_master_go(chid);
+#endif
         }
         else
         {
@@ -17624,8 +17923,10 @@ thread_ranread_test(x)
 		  if(I_LSEEK( fd, current_offset, SEEK_SET )<0)
 		  {
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			perror("lseek");
 			exit(158);
 		  };
@@ -17804,8 +18105,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
         if(cdebug)
 	{
@@ -17822,12 +18125,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_RANDOM_READ_TEST, chid, child_stat->throughput,
                         child_stat->actual,
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
+#endif
 	child_stat->flag = CHILD_STATE_HOLD; 	/* Tell parent I'm done */
 	if(!include_close)
 	{
@@ -18110,8 +18415,10 @@ thread_ranwrite_test( x)
 	if((fd = I_OPEN(dummyfile[xx], ((int)flags),0640))<0)
 	{
 		client_error=errno;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 		printf("\nCan not open temp file: %s\n", 
 			filename);
 		perror("open");
@@ -18164,8 +18471,10 @@ thread_ranwrite_test( x)
 	child_stat->flag=CHILD_STATE_READY; /* Tell parent child is ready to go */
 	if(distributed && client_iozone)
 	{
+#ifdef NET_BENCH
 		tell_master_ready(chid);
 		wait_for_master_go(chid);
+#endif
 	}
 	else
 	{
@@ -18187,8 +18496,10 @@ thread_ranwrite_test( x)
 		if(thread_randwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -18201,8 +18512,10 @@ thread_ranwrite_test( x)
 		if(thread_Lwqfd==0)
 		{
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			printf("Unable to open %s\n",tmpname);
 			exit(40);
 		}
@@ -18248,8 +18561,10 @@ thread_ranwrite_test( x)
 		  if(I_LSEEK( fd, current_offset, SEEK_SET )<0)
 		  {
 			client_error=errno;
+#ifdef NET_BENCH
 			if(distributed && client_iozone)
 				send_stop();
+#endif
 			perror("lseek");
 			exit(158);
 		  };
@@ -18454,8 +18769,10 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	if(!xflag)
 	{
 		*stop_flag=1;
+#ifdef NET_BENCH
 		if(distributed && client_iozone)
 			send_stop();
+#endif
 	}
 	
 	if(include_flush)
@@ -18507,12 +18824,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		walltime = time_so_far() - walltime;
 		child_stat->walltime = walltime;
 	}
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_RANDOM_WRITE_TEST, chid, child_stat->throughput,
                         child_stat->actual,
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
+#endif
 	stopped=0;
 	/*******************************************************************/
 	/* End random write performance test. ******************************/
@@ -18622,8 +18941,10 @@ thread_cleanup_test(x)
 	child_stat->flag = CHILD_STATE_READY;
 	if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
 		tell_master_ready(chid);
                 wait_for_master_go(chid);
+#endif
         }
         else
         {
@@ -18632,6 +18953,7 @@ thread_cleanup_test(x)
         }
 
 	*stop_flag=1;
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		send_stop();
         if(distributed && client_iozone)
@@ -18640,11 +18962,13 @@ thread_cleanup_test(x)
 			child_stat->cputime, child_stat->walltime,
 			(char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
+#endif
 	child_stat->flag = CHILD_STATE_HOLD; 	/* Tell parent I'm done */
 	free(dummyfile[xx]);
-
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		return(0);
+#endif
 #ifdef NO_THREADS
 	exit(0);
 #else
@@ -18820,7 +19144,7 @@ void *status;
 }
 #endif
 
-
+#ifdef EXCEL
 /************************************************************************/
 /* Dump the CPU utilization data.					*/
 /************************************************************************/
@@ -18973,6 +19297,7 @@ dump_throughput()
 	if(bif_flag)
 		close_xls(bif_fd);
 }
+#endif /* EXCEL */
 
 /************************************************************************/
 /* store_dvalue()							*/
@@ -21497,6 +21822,8 @@ again:
 	}
 	return (master_socket_val);
 }
+#endif /* NET_BENCH: */
+/*start_child_proc implementation must not be under conditional expr */
 
 /*
  * If not "distributed" then call fork. The "distributed"
@@ -21512,10 +21839,12 @@ int testnum;
 long long numrecs64, reclen;
 #endif
 {
-	long long x;
+	long long x = 0;
 	if(distributed && master_iozone)
 	{
+#ifdef NET_BENCH
 		x=(long long)pick_client(testnum,numrecs64, reclen);
+#endif
 	}
 	else
 	{
@@ -21524,8 +21853,9 @@ long long numrecs64, reclen;
 	if(mdebug)
 		printf("Starting proc %d\n",(int)x);	
 	return(x);
-}	
+}
 
+#ifdef NET_BENCH
 /*
  * This function picks a client from the list of clients and
  * starts it running on the remote machine. It also waits for
@@ -22622,7 +22952,7 @@ wait_dist_join()
 	current_client_number=0; /* start again */
 }
 
-
+#ifdef NET_BENCH
 /* 
  * This function reads a file that contains client information. 
  * The information is:
@@ -22748,7 +23078,7 @@ int i;
 	if(check_filename(dummyfile[i]))
 		unlink(dummyfile[i]);
 }
-
+#endif /* NET_BENCH */
 	
 /*
  * The master tells the child async listener that it is time
@@ -24845,11 +25175,13 @@ void * thread_fwrite_test( x)
         child_stat->throughput = 0;
         child_stat->actual = 0;
         child_stat->flag=CHILD_STATE_READY; /* Tell parent child is ready to go */
-
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_ready(chid);
+#endif
         if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
                 if(cdebug)
                 {
                         printf("Child %d waiting for go from master\n",(int)xx);
@@ -24861,6 +25193,7 @@ void * thread_fwrite_test( x)
                         printf("Child %d received go from master\n",(int)xx);
                         fflush(stdout);
                 }
+#endif
         }
         else
         {
@@ -24880,8 +25213,10 @@ void * thread_fwrite_test( x)
                 if(thread_wqfd==0)
                 {
                         client_error=errno;
+#ifdef NET_BENCH
                         if(distributed && client_iozone)
                                 send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -24894,8 +25229,10 @@ void * thread_fwrite_test( x)
                 if(thread_Lwqfd==0)
                 {
                         client_error=errno;
+#ifdef NET_BENCH                       
                         if(distributed && client_iozone)
                                 send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -25019,13 +25356,14 @@ void * thread_fwrite_test( x)
                 walltime = time_so_far() - walltime;
                 child_stat->walltime = walltime;
         }
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_FWRITE_TEST, chid, child_stat->throughput,
                         child_stat->actual,
                         child_stat->cputime, child_stat->walltime,
                         (char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
-
+#endif
         if (debug1) {
                 printf(" child/slot: %lld, wall-cpu: %8.3f %8.3fC" " -> %6.2f%%\n",
                         xx, walltime, cputime,
@@ -25276,11 +25614,13 @@ void * thread_fread_test( x)
         child_stat->throughput = 0;
         child_stat->actual = 0;
         child_stat->flag=CHILD_STATE_READY; /* Tell parent child is ready to go */
-
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_ready(chid);
+#endif
         if(distributed && client_iozone)
         {
+#ifdef NET_BENCH
                 if(cdebug)
                 {
                         printf("Child %d waiting for go from master\n",(int)xx);
@@ -25292,6 +25632,7 @@ void * thread_fread_test( x)
                         printf("Child %d received go from master\n",(int)xx);
                         fflush(stdout);
                 }
+#endif
         }
         else
         {
@@ -25311,8 +25652,10 @@ void * thread_fread_test( x)
                 if(thread_wqfd==0)
                 {
                         client_error=errno;
+#ifdef NET_BENCH
                         if(distributed && client_iozone)
                                 send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -25325,8 +25668,10 @@ void * thread_fread_test( x)
                 if(thread_Lwqfd==0)
                 {
                         client_error=errno;
+#ifdef NET_BENCH
                         if(distributed && client_iozone)
                                 send_stop();
+#endif
                         printf("Unable to open %s\n",tmpname);
                         exit(40);
                 }
@@ -25460,13 +25805,14 @@ void * thread_fread_test( x)
                 walltime = time_so_far() - walltime;
                 child_stat->walltime = walltime;
         }
+#ifdef NET_BENCH
         if(distributed && client_iozone)
                 tell_master_stats(THREAD_FREAD_TEST, chid, child_stat->throughput,
                         child_stat->actual,
                         child_stat->cputime, child_stat->walltime,
                         (char)*stop_flag,
                         (long long)CHILD_STATE_HOLD);
-
+#endif
         if (debug1) {
                 printf(" child/slot: %lld, wall-cpu: %8.3f %8.3fC" " -> %6.2f%%\n",
                         xx, walltime, cputime,
