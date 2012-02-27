@@ -45,7 +45,7 @@ include $(RTEMS_ROOT)/make/leaf.cfg
 #
 
 DEFINES  += -DNAME='"rtems"' -DHAVE_ANSIC_C -DNO_MADVISE \
-	    -DDONT_HAVE_O_DIRECT
+	    -DDONT_HAVE_O_DIRECT -DNO_THREADS
 CPPFLAGS += -I../../ppc-altera
 CFLAGS   += 
 
@@ -80,7 +80,7 @@ all:	${ARCH} $(SRCS) $(PGMS)
 
 ${ARCH}/nil.exe: ${OBJS} ${LINK_FILES} ${LD_PRE_LIBS}
 	echo $(CXX)
-	$(make-cxx-exe)
+	$(make-exe)
 
 # Install the program(s), appending _g or _p as appropriate.
 # for include files, just use $(INSTALL_CHANGE)
