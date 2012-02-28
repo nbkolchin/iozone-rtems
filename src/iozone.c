@@ -70,6 +70,7 @@
 #undef SHARED_MEM
 #undef MIX_PERF_TEST
 #undef EXCEL
+#undef IMON_ENABLED
 
 #if defined(linux)
   #define _GNU_SOURCE
@@ -1154,8 +1155,12 @@ int get_client_info(void);
 void exit(int);
 void find_remote_shell(char *);
 void find_external_mon(char *,char *);
+
+#ifdef IMON_ENABLED
 void start_monitor(char *);
 void stop_monitor(char *);
+#endif
+
 void takeoff_cache();
 void del_cache();
 void fill_area(long long *, long long *, long long);
@@ -1440,8 +1445,10 @@ char *build_name = "Windows";
 #else
 char *build_name = NAME;
 #endif
+#ifdef IMON_ENABLED
 char imon_start[256],imon_stop[256]; 
 char imon_sync;
+#endif
 char trflag; 
 char cpuutilflag;
 char seq_mix;
@@ -1802,8 +1809,9 @@ char **argv;
 	myid=(long long)getpid(); 	/* save the master's PID */
 	/* get_resolution(); 		 Get clock resolution */
 	time_run = time(0);		/* Start a timer */
+#ifdef IMON_ENABLED
 	(void)find_external_mon(imon_start, imon_stop);
-
+#endif
 	/*
  	 * Save the splash screen for later display. When in distributed network
 	 * mode this output does not get displayed on the clients.
@@ -2854,7 +2862,9 @@ char **argv;
 	get_resolution(); 		/* Get clock resolution */
 	if(speed_code)
 	{
+#ifdef NET_BENCH
 		do_speed_check(client_iozone);
+#endif
 		exit(0);
 	}
 	if(r_count > 1)
@@ -3274,7 +3284,9 @@ out:
 	}
 
 	if(Rflag && !trflag){
+#ifdef EXCELL
 		dump_excel();
+#endif
 	}
 	return(0);	
 }
@@ -3508,10 +3520,14 @@ void signal_handler()
 		
 #endif
 		if(Rflag && !trflag){
+#ifdef EXCELL
 			dump_excel();
+#endif
 		}
 		if(Rflag && trflag){
+#ifdef EXCELL
 			dump_throughput();
+#endif
 		}
 
 	    	if(!silent) printf("exiting iozone\n\n");
@@ -3783,9 +3799,10 @@ throughput_test()
 			toutputindex++;
 			goto next0;
 		}
-
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Write");
+#endif
 	/* Hooks to start the distributed Iozone client/server code */
 	if(distributed)
 	{
@@ -4032,8 +4049,10 @@ waitout:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Write");
+#endif
 	/**********************************************************/
 	/*************** End of intitial writer *******************/
 	/**********************************************************/
@@ -4064,8 +4083,10 @@ waitout:
 		store_dvalue( (double)0);
 		goto next0;
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Rewrite");
+#endif
 	/* Hooks to start the distributed Iozone client/server code */
 	if(distributed)
 	{
@@ -4291,8 +4312,10 @@ jump3:
 		}
 	}
 	*stop_flag=0;
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Rewrite");
+#endif
 	/**********************************************************/
 	/*************** End of rewrite throughput ****************/
 	/**********************************************************/
@@ -4314,8 +4337,10 @@ next0:
 	/**************************************************************/
 	/*** Reader throughput tests **********************************/
 	/**************************************************************/
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Read");
+#endif
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[2]);
 	walltime = 0.0;
@@ -4531,8 +4556,10 @@ jumpend4:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Read");
+#endif
 	/**********************************************************/
 	/*************** End of readers throughput ****************/
 	/**********************************************************/
@@ -4558,8 +4585,10 @@ jumpend4:
 		store_dvalue( (double)0);
 		goto next1;
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Reread");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -4779,8 +4808,10 @@ jumpend2:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Reread");
+#endif
 	/**********************************************************/
 	/*************** End of re-readers throughput ****************/
 	/**********************************************************/
@@ -4807,8 +4838,10 @@ next1:
 	/**************************************************************/
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[4]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Revread");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -5027,8 +5060,10 @@ next1:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Revread");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -5049,8 +5084,10 @@ next2:
 	/**************************************************************/
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[5]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Strideread");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -5271,8 +5308,10 @@ next2:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Strideread");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -5294,8 +5333,10 @@ next3:
 	
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[6]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Randread");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -5511,8 +5552,10 @@ next3:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Randread");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -5534,8 +5577,10 @@ next4:
 	
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[7]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Mixed");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -5751,8 +5796,10 @@ next4:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Mixed");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -5774,8 +5821,10 @@ next5:
 	
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[8]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Randwrite");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -5991,8 +6040,10 @@ next5:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Randwrite");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -6017,8 +6068,10 @@ next6:
 	
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[9]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Pwrite");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -6234,8 +6287,10 @@ next6:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Pwrite");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -6262,8 +6317,10 @@ next7:
 	
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[10]);
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Pread");
+#endif
 	walltime = 0.0;
 	cputime = 0.0;
 	jstarttime=0;
@@ -6479,8 +6536,10 @@ next7:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Pread");
+#endif
 	sync();
 	sleep(2);
 	if(restf)
@@ -6500,8 +6559,10 @@ next8:
 	/**************************************************************/
 	/*** fwriter throughput tests *********************************/
 	/**************************************************************/
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Fwrite");
+#endif
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[11]);
 	walltime = 0.0;
@@ -6717,8 +6778,10 @@ jumpend1:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Fwrite");
+#endif
 	/**********************************************************/
 	/*************** End of fwrite throughput ****************/
 	/**********************************************************/
@@ -6740,8 +6803,10 @@ next9:
 	/**************************************************************/
 	/*** freader throughput tests *********************************/
 	/**************************************************************/
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		start_monitor("Fread");
+#endif
 	toutputindex++;
 	strcpy(&toutput[toutputindex][0],throughput_tests[12]);
 	walltime = 0.0;
@@ -6957,8 +7022,10 @@ jumpend3:
 			}
 		}
 	}
+#ifdef IMON_ENABLED
 	if((!distributed) || (distributed && master_iozone))
 		stop_monitor("Fread");
+#endif
 	/**********************************************************/
 	/*************** End of fread throughput ******************/
 	/**********************************************************/
@@ -12595,7 +12662,9 @@ long long mint, maxt;
 		current_y++;
 	}
 	if(Rflag)
+#ifdef EXCELL
 		dump_throughput();
+#endif
         if(tofree)
             free(saveptr);
 
@@ -21848,7 +21917,7 @@ long long numrecs64, reclen;
 	}
 	else
 	{
-		x=(long long)fork();
+		x=(long long)fork(); // IGORV: something like spawnTask()
 	}
 	if(mdebug)
 		printf("Starting proc %d\n",(int)x);	
@@ -23277,7 +23346,9 @@ char *shell;
 	strcpy(shell,"rsh");
 #endif
 	return;
-}	
+}
+
+#ifdef IMON_ENABLED
 #ifdef HAVE_ANSIC_C
 void
 find_external_mon(char * imon_start, char * imon_stop)
@@ -23308,6 +23379,7 @@ char *imon_start,*imon_stop;
 
 	return;
 }	
+#endif
 
 /*
  * This test is only valid in throughput mode.
@@ -24231,6 +24303,7 @@ char *name;
 	return(0);
 }
 
+#ifdef IMON_ENABLED
 #ifdef HAVE_ANSIC_C
 void
 start_monitor(char *test)
@@ -24267,6 +24340,7 @@ char *test;
 		junk=system(command_line);
 	}
 }
+#endif /* IMON_ENABLED */
 
 /* 
  * As quickly as possible, generate a new buffer that
