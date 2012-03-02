@@ -82,6 +82,7 @@
 #elif defined(__rtems__)
 #include <rtems.h>
 #include <rtems/system.h>
+#include <rtems/error.h>
 #include <errno.h>
 #else
 #if defined(linux) || defined(solaris) || defined(macosx) || defined(__AIX__) || defined(FreeBSD) || defined(_HPUX_SOURCE)
@@ -1171,8 +1172,19 @@ static double cpu_util(double, double);
 void dump_cputimes(void);
 void purge_buffer_cache(void);
 char *alloc_mem(long long,int);
+
+#ifdef __rtems__
+rtems_task (thread_rwrite_test)(void *);
+#else
 void *(thread_rwrite_test)(void *);
+#endif
+
+#ifdef __rtems__
+rtems_task (thread_write_test)(void *);
+#else
 void *(thread_write_test)(void *);
+#endif
+
 void *(thread_fwrite_test)(void *);
 void *(thread_fread_test)(void *);
 void *(thread_read_test)(void*);
@@ -1205,7 +1217,7 @@ FILE *open_r_traj(void);
 void traj_vers(void);
 void r_traj_size(void);
 long long w_traj_size(void);
-void init_file_sizes();
+//void init_file_sizes();
 off64_t get_next_file_size(off64_t);
 void add_file_size(off64_t);
 void init_file_sizes( off64_t,  off64_t);
@@ -1385,6 +1397,10 @@ long long test_soutput[] = {2,2,2,1,1,1,2,2,2,2,2,2,2,2};
 /*    GLOBAL VARIABLES					          */
 /*								  */
 /*******************************************************************/
+#if defined(__rtems__)
+rtems_id     stopBarrier;
+rtems_name   bar_name = rtems_build_name('S','B','A','R');
+#endif
 
 /*
  * Set the size of the shared memory segment for the children
@@ -1687,7 +1703,11 @@ long long rest_val;
  * Sort of... Full prototypes break non-ansi C compilers. No protos is 
  * a bit sloppy, so the compromise is this.
  */
+#ifdef __rtems__
+long long spawnTask();
+#else
 long long start_child_proc();
+#endif
 int check_filename();
 
 #ifdef NET_BENCH
@@ -3816,14 +3836,31 @@ throughput_test()
 	}
 	if(!use_thread)
 	{
+#if defined(__rtems__)
+            rtems_status_code status;
+            /* Create barrier with automatic release */
+            status = rtems_barrier_create(bar_name,
+                                          RTEMS_BARRIER_AUTOMATIC_RELEASE,
+                                          num_child,
+                                          &stopBarrier);
+#endif
 	   for(xx = 0; xx< num_child ; xx++){	/* Create the children */
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_write_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_WRITE_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
 				if(!use_thread)
-					kill((pid_t)childids[xy],SIGTERM);
+#if defined(__rtems__)
+                                    rtems_task_delete((rtems_id)childids[xy]);
+#else
+				    kill((pid_t)childids[xy],SIGTERM);
+#endif
 			}
 			exit(25);
 		}
@@ -3834,6 +3871,7 @@ throughput_test()
 			printf("Parent starting slot %lld\n",xx);	
 #endif
 		if( childids[xx] == 0 ){
+/* In case of __rtems__ this is not the case */
 #ifdef _64BIT_ARCH_
 		  thread_write_test((void *)xx);
 #else
@@ -3888,12 +3926,13 @@ throughput_test()
 	{
 		prepage(buffer,reclen);		/* Force copy on write */
 				/* wait for children to start */
+#ifdef NET_BENCH
 		if(distributed && master_iozone)
 		{
-#ifdef NET_BENCH
 			start_master_listen_loop((int) num_child);
-#endif
+
 		}
+#endif
 		for(i=0;i<num_child; i++){
 			child_stat = (struct child_stats *)&shmaddr[i];	
 			while(child_stat->flag==CHILD_STATE_HOLD)
@@ -3919,6 +3958,17 @@ waitout:
 	getout=0;
 	if((long long)getpid() == myid) {	/* Parent only */
 		starttime1 = time_so_far(); /* Wait for all children */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){
 			child_stat = (struct child_stats *) &shmaddr[i];
 			if(distributed && master_iozone)
@@ -3943,6 +3993,7 @@ waitout:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -4102,15 +4153,25 @@ waitout:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_rwrite_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_REWRITE_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(28);
 		}
 		if(childids[xx] == 0){
+/* In case of __rtems__ this is not the case */
 #ifdef _64BIT_ARCH_
 			thread_rwrite_test((void *)xx);
 #else
@@ -4180,6 +4241,17 @@ waitout:
 jump3:
 	getout=0;
 	if((long long)myid == getpid()){	/* Parent only here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){
 			child_stat=(struct child_stats *)&shmaddr[i];
 			if(distributed && master_iozone)
@@ -4204,6 +4276,7 @@ jump3:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -4361,11 +4434,20 @@ next0:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_read_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_READ_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(30);
 		}
@@ -4436,6 +4518,17 @@ next0:
 jumpend4:
 	getout=0;
 	if(myid == (long long)getpid()){	/* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){
 			child_stat = (struct child_stats *)&shmaddr[i];
 			if(distributed && master_iozone)
@@ -4460,6 +4553,7 @@ jumpend4:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res; 
 		if(jtime < (double).000001)
 		{
@@ -4609,11 +4703,20 @@ jumpend4:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_rread_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_REREAD_TEST, numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(32);
 		}
@@ -4685,6 +4788,17 @@ jumpend4:
 jumpend2:
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -4709,6 +4823,7 @@ jumpend2:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res; 
 		if(jtime < (double).000001)
 		{
@@ -4862,11 +4977,20 @@ next1:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_reverse_read_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_REVERSE_READ_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(34);
 		}
@@ -4936,6 +5060,17 @@ next1:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -4960,6 +5095,7 @@ next1:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001)
 		{
@@ -5110,11 +5246,20 @@ next2:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_stride_read_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_STRIDE_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(36);
 		}
@@ -5184,6 +5329,17 @@ next2:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -5208,6 +5364,7 @@ next2:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -5359,11 +5516,20 @@ next3:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_ranread_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_RANDOM_READ_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(38);
 		}
@@ -5433,6 +5599,17 @@ next3:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -5457,6 +5634,7 @@ next3:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -5603,11 +5781,20 @@ next4:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_mix_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_RANDOM_MIX_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(38);
 		}
@@ -5677,6 +5864,17 @@ next4:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -5701,6 +5899,7 @@ next4:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -5847,7 +6046,12 @@ next5:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_ranwrite_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_RANDOM_WRITE_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
@@ -5921,6 +6125,17 @@ next5:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -5945,6 +6160,7 @@ next5:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -6094,11 +6310,20 @@ next6:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_pwrite_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_PWRITE_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(38);
 		}
@@ -6168,6 +6393,17 @@ next6:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -6192,6 +6428,7 @@ next6:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -6343,11 +6580,20 @@ next7:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_pread_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_PREAD_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(38);
 		}
@@ -6417,6 +6663,17 @@ next7:
 	
 	getout=0;
 	if(myid == (long long)getpid()){	 /* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){ /* wait for children to stop */
 			child_stat = (struct child_stats *)&shmaddr[i];
                         if(distributed && master_iozone)
@@ -6441,6 +6698,7 @@ next7:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res;
 		if(jtime < (double).000001) 
 		{
@@ -6583,11 +6841,20 @@ next8:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_fwrite_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_FWRITE_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(30);
 		}
@@ -6658,6 +6925,17 @@ next8:
 jumpend1:
 	getout=0;
 	if(myid == (long long)getpid()){	/* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){
 			child_stat = (struct child_stats *)&shmaddr[i];
 			if(distributed && master_iozone)
@@ -6682,6 +6960,7 @@ jumpend1:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res; 
 		if(jtime < (double).000001)
 		{
@@ -6827,11 +7106,20 @@ next9:
 	{
 	   for(xx = 0; xx< num_child ; xx++){
 		chid=xx;
+#if defined(__rtems__)
+                /* Spawn num_child Tasks running test */
+		childids[xx] = spawnTask(thread_fread_test, 100, xx);
+#else
 		childids[xx] = start_child_proc(THREAD_FREAD_TEST,numrecs64,reclen);
+#endif
 		if(childids[xx]==-1){
 			printf("\nFork failed\n");
 			for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                rtems_task_delete((rtems_id)childids[xy]);
+#else
 				Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 			}
 			exit(30);
 		}
@@ -6902,6 +7190,17 @@ next9:
 jumpend3:
 	getout=0;
 	if(myid == (long long)getpid()){	/* Parent here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+               /* in this case it's a time of last task completion(???) */
+               if(!jstarttime)
+	           jstarttime = time_so_far(); 
+           }
+#else
 		for( i = 0; i < num_child; i++){
 			child_stat = (struct child_stats *)&shmaddr[i];
 			if(distributed && master_iozone)
@@ -6926,6 +7225,7 @@ jumpend3:
 			if(!jstarttime)
 				jstarttime = time_so_far(); 
 		}
+#endif /* __rtems__ */
 		jtime = (time_so_far()-jstarttime)-time_res; 
 		if(jtime < (double).000001)
 		{
@@ -7065,11 +7365,20 @@ next10:
 		{
 		   for(xx = 0; xx< num_child ; xx++){
 			chid=xx;
+#if defined(__rtems__)
+                        /* Spawn num_child Tasks running test */
+             	   	childids[xx] = spawnTask(thread_cleanup_test, 100, xx);
+#else
 			childids[xx] = start_child_proc(THREAD_CLEANUP_TEST,numrecs64,reclen);
+#endif
 			if(childids[xx]==-1){
 				printf("\nFork failed\n");
 				for(xy = 0; xy< xx ; xy++){
+#if defined(__rtems__)
+                                        rtems_task_delete((rtems_id)childids[xy]);
+#else
 					Kill((long long)childids[xy],(long long)SIGTERM);
+#endif
 				}
 				exit(28);
 			}
@@ -7130,6 +7439,14 @@ next10:
 	
 		getout=0;
 		if((long long)myid == getpid()){	/* Parent only here */
+#if defined(__rtems__)
+           /* This way the main task wait for spawned tasks completion */
+           {
+               rtems_status_code status;
+               printf("thread_throughput() waiting on barrier\n");
+               status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+           }
+#else
 			for( i = 0; i < num_child; i++){
 				child_stat=(struct child_stats *)&shmaddr[i];
 				if(distributed && master_iozone)
@@ -7152,6 +7469,7 @@ next10:
 				   }
 				}
 			}
+#endif /* __rtems__ */
 		}
 
 		for(xyz=0;xyz<num_child;xyz++){	/* Reset state to 0 (HOLD) */
@@ -12714,8 +13032,13 @@ purge_buffer_cache()
 /* Thread write test				        		*/
 /************************************************************************/
 #ifdef HAVE_ANSIC_C
+#if defined(__rtems__)
+rtems_task
+thread_write_test(void *x)
+#else
 void *
 thread_write_test(void *x)
+#endif
 #else
 void *
 thread_write_test( x)
@@ -13414,8 +13737,20 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	}
 	if(hist_summary)
 	   dump_hist("write",(int)xx);
+
+#if defined(__rtems__)
+        {
+            rtems_status_code status;
+            printf("thread_write_test(), task:%lld waiting on barrier\n", xx);
+            status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+            rtems_task_delete(RTEMS_SELF);
+        }
+#else
+#ifdef NET_BENCH
 	if(distributed && client_iozone)
 		return(0);
+#endif
+
 #ifdef NO_THREADS
 	exit(0);
 #else
@@ -13425,6 +13760,7 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		exit(0);
 #endif
 return(0);
+#endif /* __rtems__ */
 }
 
 #ifdef HAVE_PREAD
@@ -14075,8 +14411,13 @@ return(0);
 /* Thread re-write test				        		*/
 /************************************************************************/
 #ifdef HAVE_ANSIC_C
+#if defined(__rtems__)
+rtems_task
+thread_rwrite_test(void *x)
+#else
 void *
 thread_rwrite_test(void *x)
+#endif
 #else
 void *
 thread_rwrite_test(x)
@@ -14662,6 +15003,14 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 	}
 	if(hist_summary)
 	   dump_hist("Rewrite",(int)xx);
+#if defined(__rtems__)
+        {
+            rtems_status_code status;
+            printf("thread_rwrite_test(), task:%lld waiting on barrier\n", xx);
+            status = rtems_barrier_wait(stopBarrier, RTEMS_NO_TIMEOUT);
+            rtems_task_delete(RTEMS_SELF);
+        }
+#else
 	if(distributed && client_iozone)
 		return(0);
 #ifdef NO_THREADS
@@ -14673,6 +15022,7 @@ printf("Desired rate %g  Actual rate %g Nap %g microseconds\n",desired_op_rate_t
 		exit(0);
 #endif
 return(0);
+#endif /* __rtems__ */
 }
 
 /************************************************************************/
@@ -21894,6 +22244,35 @@ again:
 #endif /* NET_BENCH: */
 /*start_child_proc implementation must not be under conditional expr */
 
+
+#ifdef __rtems__
+long long spawnTask(rtems_task_entry entryPoint,
+                    rtems_task_priority priority,
+                    rtems_task_argument arg)
+{
+    rtems_status_code sc;
+    rtems_id tid;
+
+    sc = rtems_task_create(rtems_build_name('t','a','s','k'),
+            priority,
+            RTEMS_MINIMUM_STACK_SIZE+(16*1024),
+            RTEMS_PREEMPT|RTEMS_TIMESLICE|RTEMS_NO_ASR|RTEMS_INTERRUPT_LEVEL(0),
+            RTEMS_FLOATING_POINT|RTEMS_LOCAL,
+            &tid);
+    if (sc != RTEMS_SUCCESSFUL) {
+        printf("Can't create task: %s\n", rtems_status_text(sc));
+        goto panic;
+    }
+    sc = rtems_task_start(tid, entryPoint, arg);
+    if (sc != RTEMS_SUCCESSFUL) {
+        printf("Can't start task: %s\n", rtems_status_text(sc));
+        goto panic;
+    }
+    return (long long) tid;
+panic:
+    return (-1);
+}
+#else
 /*
  * If not "distributed" then call fork. The "distributed"
  * will start iozone on a remote node.
@@ -21917,12 +22296,13 @@ long long numrecs64, reclen;
 	}
 	else
 	{
-		x=(long long)fork(); // IGORV: something like spawnTask()
+		x=(long long)fork();
 	}
 	if(mdebug)
 		printf("Starting proc %d\n",(int)x);	
 	return(x);
 }
+#endif /* __rtems__ */
 
 #ifdef NET_BENCH
 /*
