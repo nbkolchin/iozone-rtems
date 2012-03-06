@@ -71,6 +71,10 @@
 #undef MIX_PERF_TEST
 #undef EXCEL
 #undef IMON_ENABLED
+#undef SIGNAL_ENABLE
+#undef POPEN_PCLOSE_ENABLED
+#undef LRAND
+#undef SYSTEM_MOUNT
 
 #if defined(linux)
   #define _GNU_SOURCE
@@ -125,7 +129,11 @@ int wait();
 #endif
 int fsync();
 void srand48();
+#ifdef LRAND
 long lrand48();
+#else
+#define lrand48 rand
+#endif
 void create_list();
 void Poll();
 void print_header();
@@ -1780,11 +1788,14 @@ char **argv;
 #ifdef NET_BRANCH
 	int ret;
 #endif
+#ifdef POPEN_PCLOSE_ENABLED
 	FILE *pi;
 	char reply[IBUFSIZE];
+        char *m;
+#endif
 	unsigned char inp_pat;
 	time_t time_run;
-	char *port,*m,*subarg;
+	char *port,*subarg;
 	int num_child1;
 	int cret;
 	int anwser,bind_cpu;
@@ -1850,10 +1861,10 @@ char **argv;
 	sprintf(splash[splash_line++],"\tRun began: %s\n",ctime(&time_run));
 	argcsave=argc;
 	argvsave=argv;
-
+#ifdef SIGNAL_ENABLE
     	signal(SIGINT, signal_handler);	 	/* handle user interrupt */
     	signal(SIGTERM, signal_handler);	/* handle kill from shell */
-
+#endif
         /********************************************************/
         /* Allocate and align buffer with beginning of the 	*/
         /* on chip data cache. 					*/
@@ -2134,6 +2145,7 @@ char **argv;
 	    		sprintf(splash[splash_line++],"\tMulti_buffer. Work area %d bytes\n",
 				MAXBUFFERSIZE);
 			break;
+#ifdef POPEN_PCLOSE_ENABLED
                 case 'M':       /* Report machine name and OS */
 			bzero(reply,sizeof(reply));
                         pi=popen("uname -a", "r");
@@ -2157,7 +2169,7 @@ char **argv;
                         	sprintf(splash[splash_line++],"\n\tMachine = %s\n",reply);
 			}
                         break;
-
+#endif
 		case 'P':	/* Set beginning processor for binding. */
 #ifndef NO_THREADS
 #if defined(_HPUX_SOURCE) || defined(linux)
@@ -13000,28 +13012,41 @@ purge_buffer_cache()
 purge_buffer_cache()
 #endif
 {
+	int i, ret = 0;
+#ifdef SYSTEM_MOUNT
 	char command[1024];
-	int ret,i;
 	strcpy(command,"umount ");
 	strcat(command, mountname);
+#endif
         /*
            umount might fail if the device is still busy, so
            retry unmounting several times with increasing delays
         */
         for (i = 1; i < 200; ++i) {
+#ifdef SYSTEM_MOUNT
                ret = system(command);
+#else
+               // umount(path);
+#endif
                if (ret == 0)
                        break;
                sleep(i); /* seconds */
         }
+
+#ifdef SYSTEM_MOUNT
 	strcpy(command,"mount ");
 	strcat(command, mountname);
+#endif
 	/*
          mount might fail if the device is still busy, so
          retry mounting several times with increasing delays
         */
         for (i = 1; i < 10; ++i) {
+#ifdef SYSTEM_MOUNT
               ret = system(command);
+#else
+             // mount(...);
+#endif
               if (ret == 0)
                    break;
                    sleep(i); /* seconds */
