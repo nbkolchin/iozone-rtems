@@ -1,0 +1,7 @@
+#define NET_CFG_ETHERNET_ADDRESS { 0x00, 0x08, 0x7F, 0x22, 0x61, 0x77 }
+#define NET_CFG_IP_ADDRESS "10.100.7.100"
+#define NET_CFG_GATEWAY "10.100.7.1"
+
+#if 0
+char ethernet_address [6] = { 0x00, 0x08, 0x7F, 0x22, 0x61, 0x77 };
+#endif

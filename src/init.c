@@ -18,6 +18,11 @@
 #include <rtems/fsmount.h>
 #include <rtems/ide_part_table.h>
 
+#include <rtems/shell.h>
+
+#include "config/net-cfg.h"
+#include "telnet_compat.h"
+
 #if 1
 #define COMBO_RTEMS
 #else
@@ -159,20 +164,47 @@ static int init_ide()
   return 0;
 }
 
+static int iozone_func(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  /* TODO: here should go call to iozone 'main' function... */
+  printf("hello from iozone\n");
+  return 0;
+}
+
+static rtems_shell_cmd_t iozone_cmd = {
+  "iozone",         /* name */
+  "execute iozone", /* help text */
+  "misc",           /* topic */
+  iozone_func,      /* function */
+  NULL,             /* alias */
+  NULL              /* next */
+};
+
+/* initialize shell, network and telnet */
+static void init_telnetd()
+{
+  rtems_status_code rc;
+  rtems_termios_initialize();
+  rtems_initialize_network();
+  rtems_telnetd_initialize();
+  rc = rtems_shell_init("SHll", 32000, 100, "/dev/tty1", 1, 0);
+  if(rc != RTEMS_SUCCESSFUL)
+    printk("init shell on console failed\n");
+}
+
 rtems_task Init(rtems_task_argument unused)
 {
-  int rc;
-
-#if 0
-  struct stat st;
-#endif
-
-  rc = init_ide();
-  if(rc)
+  // init_ide();
+  init_telnetd();
+  if(rtems_shell_add_cmd_struct(&iozone_cmd) == NULL)
   {
-    printk("init_ide failed: %i\n", rc);
-    exit(2);
+    printk("add iozone_cmd to shell failed");
+    exit(3);
   }
+
+  rtems_task_delete(RTEMS_SELF);
 
   exit(0);
 }  

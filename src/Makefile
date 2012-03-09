@@ -15,7 +15,8 @@ C_O_FILES=$(C_PIECES:%=${ARCH}/%.o)
 #CC_FILES=$(CC_PIECES:%=%.cc)
 #CC_O_FILES=$(CC_PIECES:%=${ARCH}/%.o)
 
-H_FILES=system.h
+H_FILES=system.h telnet_compat.h config/net-cfg.h config/net-cfg-sh4.h \
+        config/net-cfg-qemu.h config/net-cfg-ppc.h
 
 # Assembly source names, if any, go here -- minus the .S
 #S_PIECES=
