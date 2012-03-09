@@ -196,7 +196,7 @@ static void init_telnetd()
 
 rtems_task Init(rtems_task_argument unused)
 {
-  // init_ide();
+  init_ide();
   init_telnetd();
   if(rtems_shell_add_cmd_struct(&iozone_cmd) == NULL)
   {
