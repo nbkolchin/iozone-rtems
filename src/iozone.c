@@ -315,9 +315,9 @@ THISVERSION,
 #define MAP_ANONYMOUS 8
 #define MAP_FAILED ((void*)-1)
 
-//#ifndef RTEMS_COMBO
-//#define RTEMS_VAR_UNUSED
-//#endif
+#ifndef RTEMS_VAR_UNUSED
+#define RTEMS_VAR_UNUSED __attribute__((unused))
+#endif
 
 static inline void* mmap(
     void* addr RTEMS_VAR_UNUSED,
