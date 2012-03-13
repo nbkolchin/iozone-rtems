@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 
+#ifndef FAT_FAT12
+#define FAT_FAT12 (0x01)
+#endif
+
+#ifndef FAT_FAT16
+#define FAT_FAT16 (0x02)
+#endif
+
+#ifndef FAT_FAT32
+#define FAT_FAT32 (0x04)
+#endif
+
 #define MS_BYTES_PER_CLUSTER_LIMIT (0x8000)
 #define FAT_FAT12_MAX_CLN (4085)
 #define FAT_FAT16_MAX_CLN (65525)
