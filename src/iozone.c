@@ -62,6 +62,7 @@
 /* The version number */
 #define THISVERSION "        Version $Revision: 3.398 $"
 
+#if 0
 /* The next functionalilties are disabled because of platform limitations */
 /* #define NO_THREADS */
 #undef PIT_ENABLED
@@ -75,6 +76,7 @@
 #undef POPEN_PCLOSE_ENABLED
 #undef LRAND
 #undef SYSTEM_MOUNT
+#endif
 
 #if defined(linux)
   #define _GNU_SOURCE
@@ -122,7 +124,7 @@ extern  int h_errno; /* imported for errors */
 int atoi();
 int close();
 int unlink();
-int main();
+int main_iozone();
 void record_command_line();
 #if !defined(linux)
 int wait();
@@ -1778,7 +1780,7 @@ void cleanup_children();
 /****************************************************************/
 
 int
-main(argc,argv) 
+main_iozone(argc,argv) 
 int argc;
 char **argv;
 {
@@ -10093,7 +10095,8 @@ long long *data1,*data2;
 			purge_buffer_cache();
 		}
 	 	if((fd = I_OPEN(filename, open_flags,0))<0){
-	 		printf("\nCan not open temporary file for read\n");
+	 		printf("\nCan not open temporary file "
+                               "(%s) for read\n", filename);
 	 		perror("open");
 	 		exit(75);
 	 	}

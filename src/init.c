@@ -22,6 +22,7 @@
 
 #include "config/net-cfg.h"
 #include "telnet_compat.h"
+#include "iozone_cfg.h"
 
 #if 1
 #define COMBO_RTEMS
@@ -161,16 +162,14 @@ static int init_ide()
 
   printf("mount aborted at %zu\n", abort_index);
 #endif
+
+  printf(".. CompactFlash logical disk has been mounted\n");
   return 0;
 }
 
 static int iozone_func(int argc, char** argv)
 {
-  (void)argc;
-  (void)argv;
-  /* TODO: here should go call to iozone 'main' function... */
-  printf("hello from iozone\n");
-  return 0;
+  return main_iozone(argc, argv);
 }
 
 static rtems_shell_cmd_t iozone_cmd = {
