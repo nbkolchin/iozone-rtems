@@ -772,12 +772,15 @@ int msdos_format
   /*
    * sanity check on device
    */
+  printk("..%s(). sanity check on device\n", __FUNCTION__);
   if (ret_val == 0) {
     rc = stat(devname, &stat_buf);
     ret_val = rc;
   }
   
-  /* rtems feature: no block devices, all are character devices */   
+  /* rtems feature: no block devices, all are character devices */ 
+  printk("..%s(). rtems feature: no block devices, "
+         "all are character devices\n", __FUNCTION__);
   if ((ret_val == 0) &&
       (!S_ISCHR(stat_buf.st_mode))) {
     errno = ENOTBLK;
@@ -785,6 +788,7 @@ int msdos_format
   }
   
   /* check that  device is registered as block device and lock it */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     dd = rtems_disk_obtain(stat_buf.st_dev);
     if (dd == NULL) {
@@ -796,6 +800,7 @@ int msdos_format
   /*
    * open device for writing
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     fd = open(devname, O_WRONLY);
     if (fd == -1)
@@ -807,12 +812,14 @@ int msdos_format
   /*
    * compute formatting parameters
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     ret_val = msdos_format_determine_fmt_params(dd,rqdata,&fmt_params);
   }
   /*
    * if requested, write whole disk/partition with 0xe5
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if ((ret_val == 0) &&
       (rqdata != NULL) &&
       !(rqdata->quick_format)) {
@@ -826,6 +833,7 @@ int msdos_format
   /*
    * create master boot record 
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     ret_val = msdos_format_gen_mbr(tmp_sec,&fmt_params);
   }
@@ -833,6 +841,7 @@ int msdos_format
    * write master boot record to disk
    * also write copy of MBR to disk
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     ret_val = msdos_format_write_sec(fd, 
 				     0, 
@@ -844,6 +853,7 @@ int msdos_format
     /*
      * write copy of MBR
      */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
     ret_val = msdos_format_write_sec(fd, 
 				     fmt_params.mbr_copy_sec , 
 				     fmt_params.bytes_per_sector,
@@ -852,6 +862,7 @@ int msdos_format
   /*
    * for FAT32: initialize info sector on disk
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if ((ret_val == 0) && 
       (fmt_params.fsinfo_sec != 0)) {
       ret_val = msdos_format_gen_fsinfo(tmp_sec);
@@ -859,6 +870,7 @@ int msdos_format
   /*
    * write fsinfo sector
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if ((ret_val == 0) &&
       (fmt_params.fsinfo_sec != 0)) {
     ret_val = msdos_format_write_sec(fd, 
@@ -870,6 +882,7 @@ int msdos_format
    * write FAT as all empty
    * -> write all FAT sectors as zero
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     ret_val = msdos_format_fill_sectors
       (fd,
@@ -882,6 +895,7 @@ int msdos_format
    * clear/init root directory
    * -> write all directory sectors as 0x00
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (ret_val == 0) {
     ret_val = msdos_format_fill_sectors
       (fd,
@@ -893,6 +907,7 @@ int msdos_format
   /*
    * write volume label to first entry of directory
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if ((ret_val == 0) && fmt_params.VolLabel_present) {
     memset(tmp_sec,0,sizeof(tmp_sec));
     memcpy(MSDOS_DIR_NAME(tmp_sec),fmt_params.VolLabel,MSDOS_SHORT_NAME_LEN);
@@ -908,6 +923,7 @@ int msdos_format
    * write FAT entry 1 as EOC
    * allocate directory in a FAT32 FS
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if ((ret_val == 0) && fmt_params.VolLabel_present){
     /*
      * empty sector: all clusters are free/do not link further on
@@ -966,12 +982,17 @@ int msdos_format
    * sync and unlock disk
    * free any data structures (not needed now)
    */
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (fd != -1) {
     close(fd);
   }
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   if (dd != NULL) {
     rtems_disk_release(dd);
+  printk("..%s(line:%d). \n", __FUNCTION__, __LINE__);
   }
+
+  printk("..%s(). return %d \n", __FUNCTION__, ret_val);
   return ret_val;
 }
 

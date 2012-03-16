@@ -22,6 +22,7 @@
 
 #include "config/net-cfg.h"
 #include "telnet_compat.h"
+#include "msdos_format.h"
 #include "iozone_cfg.h"
 
 #if 1
@@ -195,6 +196,12 @@ static void init_telnetd()
 
 rtems_task Init(rtems_task_argument unused)
 {
+  msdos_format_request_param_t rqdata;
+
+  memset(&rqdata, 0, sizeof(rqdata));
+  /* TODO: hardcoded devname :( */
+  msdos_format("/dev/hda1", &rqdata);
+
   init_ide();
   init_telnetd();
   if(rtems_shell_add_cmd_struct(&iozone_cmd) == NULL)
