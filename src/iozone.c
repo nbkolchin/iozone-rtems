@@ -895,9 +895,9 @@ struct master_neutral_command {
 #define MAXBUFFERSIZE (8*1024*1024)		
 #else
 /* At 16 Meg switch to large records */
-#define CROSSOVER (16*1024)		
+#define CROSSOVER (8*1024)		
 /* Maximum buffer size*/
-#define MAXBUFFERSIZE (16*1024*1024)		
+#define MAXBUFFERSIZE (8*1024*1024)		
 #endif
 
 /* Maximum number of children. Threads/procs/clients */
@@ -7600,13 +7600,17 @@ time_so_far()
     ( ((float)(gp.tv_nsec)) * 0.000000001 ));
 #else
 #if defined (__rtems__)
-#if 0
-  current_time = ((double)benchmark_timer_read());
-  return current_time;
-#else
-  rtems_ticks = rtems_clock_get_ticks_since_boot();
-  return (double)(rtems_ticks/ticks_per_second);
-#endif
+// #if 0
+//   current_time = ((double)benchmark_timer_read());
+//   return current_time;
+// #else
+//   rtems_ticks = rtems_clock_get_ticks_since_boot();
+//   return (double)(rtems_ticks/ticks_per_second);
+// #endif
+  struct timespec gp;
+  rtems_clock_get_uptime(&gp);
+  return (( (double) (gp.tv_sec)) +
+    ( ((float)(gp.tv_nsec)) * 0.000000001 ));
 #else
   struct timeval tp;
 
@@ -20287,20 +20291,24 @@ time_so_far1()
     ( ((float)(gp.tv_nsec)) * 0.001 ));
 #else
 #if defined (__rtems__)
-#if 0
-  current_time = ((double)benchmark_timer_read());
-
-  return current_time;
-#else
+// #if 0
+//   current_time = ((double)benchmark_timer_read());
+// 
+//   return current_time;
+// #else
 //  rtems_clock_get(RTEMS_CLOCK_GET_SECONDS_SINCE_EPOCH, &rtems_seconds);
 //  return ((double)rtems_seconds * 1000000.0);
-  _TOD_Get(&rtems_ts);
+//  _TOD_Get(&rtems_ts);
 //  printf(".. %s(). sec:%ld nanosec:%ld\n", __FUNCTION__,
 //          rtems_ts.tv_sec, rtems_ts.tv_nsec);
 //  fflush(stdout);
-  return ((double)(rtems_ts.tv_sec)*1000000.0) + 
-         ((double)(rtems_ts.tv_nsec)/1000.0);
-#endif
+//  return ((double)(rtems_ts.tv_sec)*1000000.0) + 
+//         ((double)(rtems_ts.tv_nsec)/1000.0);
+// #endif
+  struct timespec gp;
+  rtems_clock_get_uptime(&gp);
+  return (( (double) (gp.tv_sec)*1000000.0) +
+    ( ((float)(gp.tv_nsec)) * 0.001 ));
 #else
   struct timeval tp;
 

@@ -5,7 +5,7 @@
 
 #include <rtems/telnetd.h>
 
-#if (__RTEMS_MAJOR__ >= 4) && (__RTEMS_MINOR__ >= 8)
+#if (__RTEMS_MAJOR__ >= 4) && (__RTEMS_MINOR__ >= 8) && (__RTEMS_MINOR__ < 10)
 
 #include <rtems/shell.h>
 #include <string.h>
@@ -46,6 +46,10 @@ static void __snob_static_telnet_cmd(char* a, void* v)
 #define main_telnetd                    rtems_telnetd_main
 #define register_telnetd                rtems_telnetd_register
 
+#endif
+
+#if (__RTEMS_MAJOR__ >= 4) && (__RTEMS_MINOR__ >= 10)
+rtems_telnetd_config_table rtems_telnetd_config;
 #endif
 
 #endif
