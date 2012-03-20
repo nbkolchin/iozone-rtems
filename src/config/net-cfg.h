@@ -42,6 +42,7 @@ extern int rtems_bsdnet_loopattach(struct rtems_bsdnet_ifconfig*, int);
 #define NET_CFG_MBUF_CLUSTER (1024*1024)
 #endif
 
+#if __RTEMS_MAJOR__ == 4 && __RTEMS_MINOR__ < 10
 static struct rtems_bsdnet_ifconfig loopback_config = {
   "lo0",            /* name */
   rtems_loopattach, /* attach function */
@@ -49,13 +50,18 @@ static struct rtems_bsdnet_ifconfig loopback_config = {
   "127.0.0.1",      /* ip address */
   "255.0.0.0",      /* ip net mask */
 };
+#endif
 
 static char net_cfg_ethernet_address[6] = NET_CFG_ETHERNET_ADDRESS;
 
 static struct rtems_bsdnet_ifconfig netdriver_config = {
   RTEMS_BSP_NETWORK_DRIVER_NAME,   /* name */
   RTEMS_BSP_NETWORK_DRIVER_ATTACH, /* attach function */
+#if __RTEMS_MAJOR__ == 4 && __RTEMS_MINOR__ < 10
   &loopback_config,                /* link to next interface */
+#else
+  NULL,
+#endif
   NET_CFG_IP_ADDRESS,              /* ip address */
   NET_CFG_IP_MASK,                 /* ip net mask */
   net_cfg_ethernet_address,        /* MAC address */

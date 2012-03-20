@@ -25,7 +25,7 @@
 #include "msdos_format.h"
 #include "iozone_cfg.h"
 
-#if 1
+#if __RTEMS_MAJOR__ == 4 && __RTEMS_MINOR__ < 10
 #define COMBO_RTEMS
 #else
 #undef COMBO_RTEMS
@@ -37,6 +37,14 @@
 
 #define DEVNAME "/dev/hda"
 
+#ifdef __PPC__
+static unsigned char _fpga_data[] =
+{
+#include "ppc-altera/TDS12_Base.ttf"
+};
+unsigned long fpga_data_len = sizeof(_fpga_data);
+unsigned char* fpga_data = _fpga_data;
+#endif
 
 #if 0
 static const rtems_fstab_entry fstab [] = {
@@ -189,7 +197,11 @@ static void init_telnetd()
   rtems_termios_initialize();
   rtems_initialize_network();
   rtems_telnetd_initialize();
+#ifdef COMBO_RTEMS
   rc = rtems_shell_init("SHll", 32000, 100, "/dev/tty1", 1, 0);
+#else
+  rc = rtems_shell_init("SHll", 32000, 100, "/dev/tty1", 1, 0, NULL);
+#endif
   if(rc != RTEMS_SUCCESSFUL)
     printk("init shell on console failed\n");
 }
