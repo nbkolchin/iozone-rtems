@@ -88,6 +88,7 @@
 #elif defined(__rtems__)
 #include <rtems.h>
 #include <rtems/system.h>
+#include <rtems/timerdrv.h>
 #include <rtems/error.h>
 #include <errno.h>
 #else
@@ -1408,8 +1409,9 @@ long long test_soutput[] = {2,2,2,1,1,1,2,2,2,2,2,2,2,2};
 /*								  */
 /*******************************************************************/
 #if defined(__rtems__)
-rtems_id     stopBarrier;
-rtems_name   bar_name = rtems_build_name('S','B','A','R');
+rtems_id       stopBarrier;
+rtems_interval ticks_per_second;
+rtems_name     bar_name = rtems_build_name('S','B','A','R');
 #endif
 
 /*
@@ -1802,8 +1804,13 @@ char **argv;
 	int cret;
 	int anwser,bind_cpu;
 	char *evalue;
+        char *b0, *b1;
 
-
+#ifdef __rtems__
+        rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
+        printf(".. %s(), ticks_per_second:%ld\n",
+                __FUNCTION__, ticks_per_second);
+#endif
 	anwser=bind_cpu=0;
 	/* Used to make fread/fwrite do something better than their defaults */
 	setvbuf( stdout, NULL, _IONBF, (size_t) NULL );
@@ -1872,9 +1879,9 @@ char **argv;
         /* on chip data cache. 					*/
         /********************************************************/
 
-     	buffer = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
+     	b0 = buffer = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
 	if(buffer == 0) {
-        	perror("Memory allocation failed:");
+        	perror("(1) Memory allocation failed:");
         	exit(1);
         }
 
@@ -1888,9 +1895,9 @@ char **argv;
 	mainbuffer = buffer;
 
 	/* de-dup input buf */
-     	buffer1 = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
+     	b1 = buffer1 = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
 	if(buffer1 == 0) {
-        	perror("Memory allocation failed:");
+        	perror("(2) Memory allocation failed:");
         	exit(1);
         }
 
@@ -1908,7 +1915,7 @@ char **argv;
 	/* de-dup temp buf */
      	buffer1 = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
 	if(buffer1 == 0) {
-        	perror("Memory allocation failed:");
+        	perror("(3) Memory allocation failed:");
         	exit(1);
         }
 
@@ -2141,7 +2148,7 @@ char **argv;
 			mflag++;
      			mbuffer = (char *) alloc_mem((long long)MAXBUFFERSIZE,(int)0);
 			if(mbuffer == 0) {
-                        	perror("Memory allocation failed:");
+                        	perror("(4) Memory allocation failed:");
                           	exit(8);
 			}
 	    		sprintf(splash[splash_line++],"\tMulti_buffer. Work area %d bytes\n",
@@ -2891,7 +2898,11 @@ char **argv;
 			printf("Unsupported option -> %s <-\n",optarg);
 			exit(255);
 		}
-	}
+    }
+#ifdef __rtems__
+//        printf(".. %s(): /* probably this is correct place to init rtems timer */\n", __FUNCTION__);
+        benchmark_timer_initialize();
+#endif
 	base_time=(long)time_so_far();
 	get_resolution(); 		/* Get clock resolution */
 	if(speed_code)
@@ -3284,11 +3295,13 @@ char **argv;
 #endif
 	orig_size=kilobytes64;
 	if(trflag){
+            printf(".. Multi throughput test: mint=%lld, maxt=%lld\n", mint, maxt);
 	    (void)multi_throughput_test(mint,maxt);
 	    goto out;
 	}
 	if(trflag && (mint == maxt)){
 		auto_mode=0;
+                printf(".. Throughput test\n");
 		throughput_test();
 	    	goto out;
 	}
@@ -3322,6 +3335,8 @@ out:
 		dump_excel();
 #endif
 	}
+        free(b0);
+        free(b1);
 	return(0);	
 }
 
@@ -3372,6 +3387,10 @@ long long reclength;
 	long long num_tests,test_num,i,j;
 	long long data1[MAXTESTS], data2[MAXTESTS];
 	num_tests = sizeof(func)/sizeof(char *);
+#if 0
+        printf(".. %s().\n", __FUNCTION__);
+#endif
+
 #if defined(HAVE_PREAD) 
 	if(!Eflag)
 	{
@@ -3439,7 +3458,13 @@ long long reclength;
 		for(i=0;i<num_tests;i++)
 		{
 			if(include_mask & (long long)(1<<i))
+                        {
+#if 0
+                           printf(".. %s(tflag:%d): func[%lld] running\n",
+                                  __FUNCTION__, include_tflag, i);
+#endif
 			   func[i](kilobytes64,reclen,&data1[i],&data2[i]);
+                        }
 			else
 			{
 			       	if(!silent) printf("%s",test_output[i]); 
@@ -3453,6 +3478,10 @@ long long reclength;
 	{
 		for(test_num=0;test_num < num_tests;test_num++)
 		{
+#if 0
+                        printf(".. %s(tflag:%d): func[%lld] running\n",
+                                __FUNCTION__, include_tflag, test_num);
+#endif
 			func[test_num](kilobytes64,reclen,&data1[test_num],&data2[test_num]);
 		};
 	}
@@ -3914,7 +3943,7 @@ throughput_test()
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(5) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -4202,7 +4231,7 @@ waitout:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(6) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -4482,7 +4511,7 @@ next0:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(7) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -4752,7 +4781,7 @@ jumpend4:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(8) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -5026,7 +5055,7 @@ next1:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(9) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -5295,7 +5324,7 @@ next2:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(10) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -5565,7 +5594,7 @@ next3:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(11) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -5830,7 +5859,7 @@ next4:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(12) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -6091,7 +6120,7 @@ next5:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(13) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -6359,7 +6388,7 @@ next6:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(14) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -6629,7 +6658,7 @@ next7:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(15) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -6889,7 +6918,7 @@ next8:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(16) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -7154,7 +7183,7 @@ next9:
 		{
 			barray[xx]=(char *) alloc_mem((long long)(MAXBUFFERSIZE+cache_size),(int)0);
 			if(barray[xx] == 0) {
-        		   perror("Memory allocation failed:");
+        		   perror("(17) Memory allocation failed:");
         		   exit(26);
         		}
      			barray[xx] =(char *)(((long)barray[xx] + cache_size ) & 
@@ -7526,6 +7555,13 @@ static double
 time_so_far()
 #endif
 {
+#ifdef __rtems__
+#if 0
+   double current_time;
+#else
+   rtems_interval rtems_ticks;
+#endif
+#endif
 #ifdef Windows
    LARGE_INTEGER freq,counter;
    double wintime,bigcounter;
@@ -7563,6 +7599,15 @@ time_so_far()
   return (( (double) (gp.tv_sec)) +
     ( ((float)(gp.tv_nsec)) * 0.000000001 ));
 #else
+#if defined (__rtems__)
+#if 0
+  current_time = ((double)benchmark_timer_read());
+  return current_time;
+#else
+  rtems_ticks = rtems_clock_get_ticks_since_boot();
+  return (double)(rtems_ticks/ticks_per_second);
+#endif
+#else
   struct timeval tp;
 
   if(pit_hostname[0]){
@@ -7580,6 +7625,7 @@ time_so_far()
          perror("gettimeofday");
   	 return ((double) (tp.tv_sec)) + (((double) tp.tv_usec) * 0.000001 );
   }
+#endif
 #endif
 #endif
 }
@@ -8106,6 +8152,7 @@ long long *data2;
 		}
 		if(Uflag) /* Unmount and re-mount the mountpoint */
 		{
+                        printf(".. %s(). purge_buffer_cache\n", __FUNCTION__);
 			purge_buffer_cache();
 		}
 		if(j==0)
@@ -8235,6 +8282,7 @@ long long *data2;
 			fetchit(pbuff,reclen);
 		if(verify || dedup || dedup_interior)
 			fill_buffer(pbuff,reclen,(long long)pattern,sverify,(long long)0);
+
 		starttime1 = time_so_far();
 #ifdef unix
 		if(Q_flag)
@@ -12763,6 +12811,9 @@ int shared_flag;
         char mmapFileName[]="mmap_tmp_XXXXXX";
 #endif
 
+        printf(".. %s(): distributed:%d, shared_flag:%d, trflag:%d, use_thread:%d\n",
+                __FUNCTION__, distributed, shared_flag, trflag, use_thread);
+
 	tmp = 0;
 	dumb = (char *)0;
 	tfd=0;
@@ -12820,7 +12871,6 @@ int shared_flag;
 	shmctl(shmid, IPC_RMID, 0);
 	return(addr);
 #else
-
 	size1=l_max(size,page_size);
 	size1=(size1 +page_size) & ~(page_size-1);
 #if defined(bsd4_2) && !defined(macosx)
@@ -12896,8 +12946,6 @@ long  long time1;
 #endif
 {
 #if defined(__rtems__)
-        rtems_interval ticks_per_second;
-        rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
 
         rtems_task_wake_after(time1 * (ticks_per_second/1000000));
 #else
@@ -20052,9 +20100,6 @@ int ntime;
 #endif
 {
 #if defined(__rtems__)
-        rtems_interval ticks_per_second;
-        rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
-
         rtems_task_wake_after(ntime * (ticks_per_second/1000000));
 #else
 	struct timeval nap_time;
@@ -20195,6 +20240,13 @@ static double
 time_so_far1()
 #endif
 {
+#ifdef __rtems__
+#if 0
+   double current_time;
+#else
+   struct timespec rtems_ts;
+#endif
+#endif
      /* For Windows the time_of_day() is useless. It increments in 
         55 milli second  increments. By using the Win32api one can 
 	get access to the high performance measurement interfaces. 
@@ -20234,6 +20286,22 @@ time_so_far1()
   return (( (double) (gp.tv_sec)*1000000.0) +
     ( ((float)(gp.tv_nsec)) * 0.001 ));
 #else
+#if defined (__rtems__)
+#if 0
+  current_time = ((double)benchmark_timer_read());
+
+  return current_time;
+#else
+//  rtems_clock_get(RTEMS_CLOCK_GET_SECONDS_SINCE_EPOCH, &rtems_seconds);
+//  return ((double)rtems_seconds * 1000000.0);
+  _TOD_Get(&rtems_ts);
+//  printf(".. %s(). sec:%ld nanosec:%ld\n", __FUNCTION__,
+//          rtems_ts.tv_sec, rtems_ts.tv_nsec);
+//  fflush(stdout);
+  return ((double)(rtems_ts.tv_sec)*1000000.0) + 
+         ((double)(rtems_ts.tv_nsec)/1000.0);
+#endif
+#else
   struct timeval tp;
 
   if(pit_hostname[0]){
@@ -20252,6 +20320,7 @@ time_so_far1()
         perror("gettimeofday");
      return ((double) (tp.tv_sec)*1000000.0) + (((double) tp.tv_usec) );
   }
+#endif
 #endif
 #endif
 }
@@ -24662,7 +24731,7 @@ alloc_pbuf(void)
 {
 	pbuffer = (char *) alloc_mem((long long)(3 * cache_size),(int)0);
 	if(pbuffer == 0) {
-              	perror("Memory allocation failed:");
+              	perror("(18) Memory allocation failed:");
                	exit(9);
 	}
 #ifdef _64BIT_ARCH_
