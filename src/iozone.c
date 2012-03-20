@@ -1411,6 +1411,7 @@ long long test_soutput[] = {2,2,2,1,1,1,2,2,2,2,2,2,2,2};
 #if defined(__rtems__)
 rtems_id       stopBarrier;
 rtems_interval ticks_per_second;
+
 rtems_name     bar_name = rtems_build_name('S','B','A','R');
 #endif
 
@@ -1804,7 +1805,8 @@ char **argv;
 	int cret;
 	int anwser,bind_cpu;
 	char *evalue;
-        char *b0, *b1;
+        char *b0 = NULL;
+        char *b1 = NULL;
 
 #ifdef __rtems__
         rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
@@ -1882,7 +1884,7 @@ char **argv;
      	b0 = buffer = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
 	if(buffer == 0) {
         	perror("(1) Memory allocation failed:");
-        	exit(1);
+        	goto out; //exit(1);
         }
 
 #ifdef _64BIT_ARCH_
@@ -1898,7 +1900,7 @@ char **argv;
      	b1 = buffer1 = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
 	if(buffer1 == 0) {
         	perror("(2) Memory allocation failed:");
-        	exit(1);
+        	goto out; //exit(1);
         }
 
 #ifdef _64BIT_ARCH_
@@ -1916,7 +1918,7 @@ char **argv;
      	buffer1 = (char *) alloc_mem((long long)(MAXBUFFERSIZE + (2 * cache_size)),(int)0);
 	if(buffer1 == 0) {
         	perror("(3) Memory allocation failed:");
-        	exit(1);
+        	goto out; //exit(1);
         }
 
 #ifdef _64BIT_ARCH_
@@ -1934,7 +1936,7 @@ char **argv;
   	sprintf(dummyfile[0],"%s.DUMMY",default_filename);
 	if(argc <=1){
 		printf(USAGE);
-		exit(255);
+		goto out; //exit(255);
 	}
 	auto_mode = 0; 		/* Default is to disable auto mode */
 	inp_pat = PATTERN; 	/* Init default pattern for verification */
@@ -1968,7 +1970,7 @@ char **argv;
 			use_thread++;
 #else
 			printf("\tThreads not supported in this version\n");
-			exit(2);
+			goto out; //exit(2);
 #endif
 			break;
 		case 'H':	/* Use POSIX async_io */
@@ -2115,14 +2117,14 @@ char **argv;
 			if(mint > (unsigned long long)MAXSTREAMS){
 			  printf("Invalid options: maximum streams for ");
 			  printf("throughput is MAXSTREAMS\n");
-			  exit(4);
+			  goto out; //exit(4);
 			}
 			lflag++;
 			trflag++;
 			if(Uflag)
 			{
 				printf("Can not run throughput tests with unmount & remounts.\n");
-				exit(5);
+				goto out; //exit(5);
 			}
 			break;
 		case 'u': 	/* Set upper thread/proc limit  */
@@ -2132,14 +2134,14 @@ char **argv;
 			if(maxt > MAXSTREAMS){
 			  printf("Invalid options: maximum streams for ");
 			  printf("throughput is MAXSTREAMS\n");
-			  exit(6);
+			  goto out; //exit(6);
 			}
 			uflag++;
 			trflag++;
 			if(Uflag)
 			{
 				printf("Can not run throughput tests with unmount & remounts.\n");
-				exit(7);
+				goto out; //exit(7);
 			}
 			break;
 		case 'm':	/* Use multiple buffers */
@@ -2149,7 +2151,7 @@ char **argv;
      			mbuffer = (char *) alloc_mem((long long)MAXBUFFERSIZE,(int)0);
 			if(mbuffer == 0) {
                         	perror("(4) Memory allocation failed:");
-                          	exit(8);
+                          	goto out; //exit(8);
 			}
 	    		sprintf(splash[splash_line++],"\tMulti_buffer. Work area %d bytes\n",
 				MAXBUFFERSIZE);
@@ -2208,7 +2210,7 @@ char **argv;
 		case 'h':	/* show help */
 			hflag++;
 	    		show_help();
-			exit(0);
+			goto out; //exit(0);
 			break;
 		case 'E':	/* Extended testing for pread/pwrite... */
 			Eflag++;
@@ -2253,7 +2255,7 @@ char **argv;
 		case 'f':	/* Specify the file name */
 			if(mfflag) {
 			  printf("invalid options: -f and -F are mutually exclusive\n");
-			  exit(10);
+			  goto out; //exit(10);
 			}
 			fflag++;
 			strcpy(filename,optarg);
@@ -2268,11 +2270,11 @@ char **argv;
 	 		mfflag++;
 			if(fflag) {
 			  printf("invalid options: -f and -F are mutually exclusive\n");
-			  exit(11);
+			  goto out; //exit(11);
 			}
 			if(!trflag) {
 			  printf("invalid options: must specify -t N before -F\n");
-			  exit(12);
+			  goto out; //exit(12);
 			}
 			optind--;
 			for(fileindx=0;fileindx<maxt;fileindx++) {
@@ -2283,7 +2285,7 @@ char **argv;
 #else
 			    printf("invalid options: not enough filenames for %lld streams\n",num_child);
 #endif
-			    exit(13);
+			    goto out; //exit(13);
 			  }
 			}
 			break;
@@ -2321,7 +2323,7 @@ char **argv;
 				printf("Error: maximum record size %lld KB is greater than maximum buffer size %lld KB\n ",
 					(long long)(max_rec_size/1024LL), (long long)MAXBUFFERSIZE/1024LL);
 #endif
-				exit(23);
+				goto out; //exit(23);
 			}
 			break;
 		case 'J':	/* Specify the compute time in millisecs */
@@ -2349,7 +2351,7 @@ char **argv;
 #else
 			  printf("Numchild %lld %s\n",num_child,optarg);
 #endif
-			  exit(14);
+			  goto out; //exit(14);
 			}
 			if(num_child <= 0)
 				num_child = 8;
@@ -2361,7 +2363,7 @@ char **argv;
 			if(Uflag)
 			{
 				printf("Can not run throughput tests with unmount & remounts.\n");
-				exit(15);
+				goto out; //exit(15);
 			}
 			break;
 		case 'd':	/* Specify the delay of children to run */
@@ -2376,7 +2378,7 @@ char **argv;
 			if(tval > RANDOM_MIX_TEST)
 			{
 				printf("\tPread tests not available on this operating system.\n");
-				exit(183);
+				goto out; //exit(183);
 			}
 #endif
 			if(tval > sizeof(func)/sizeof(char *)) 
@@ -2392,7 +2394,7 @@ char **argv;
     			{
 				printf("%s\n", head1[ind]);
     			}
-			exit(0);
+			goto out; //exit(0);
 			break;
 		case 'U':	/* Specify the dev name for umount/mount*/
 			Uflag++;
@@ -2400,7 +2402,7 @@ char **argv;
 			if(trflag)
 			{
 				printf("Can not run throughput tests with unmount & remounts.\n");
-				exit(16);
+				goto out; //exit(16);
 			}
 			break;
 		case 'w':	/* Do not unlink files */
@@ -2430,7 +2432,7 @@ char **argv;
 				write_traj_filename);
 			w_traj_fd=open_w_traj();
 			if(w_traj_fd == (FILE *)0)
-				exit(200);
+				goto out; //exit(200);
 			break;
 		case 'Y':	/* Open Read telemetry file */
 			compute_flag=1;
@@ -2443,7 +2445,7 @@ char **argv;
 			r_traj_size();
 			r_traj_fd=open_r_traj();
 			if(r_traj_fd == (FILE*) 0)
-				exit(200);
+				goto out; //exit(200);
 			break;
 		case 'n':	/* Set min file size for auto mode */
 			nflag=1;
@@ -2545,7 +2547,7 @@ char **argv;
 				printf("Error: maximum record size %lld KB is greater than maximum buffer size %lld KB\n ",
 					(long long)(max_rec_size/1024LL), (long long)MAXBUFFERSIZE/1024LL);
 #endif
-				exit(23);
+				goto out; //exit(23);
 			}
 #ifdef NO_PRINT_LLD
 			sprintf(splash[splash_line++],"\tUsing Maximum Record Size %ld KB\n", max_rec_size/1024);
@@ -2578,7 +2580,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+c takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					strcpy(controlling_host_name,subarg);
 					distributed=1;
@@ -2590,7 +2592,7 @@ char **argv;
                                         if(subarg==(char *)0)
                                         {
                                              printf("-+h takes an operand !!\n");
-                                             exit(200);
+                                             goto out; //exit(200);
                                         }
                                         strcpy(controlling_host_name,subarg);
                                         sprintf(splash[splash_line++],"\tHostname = %s\n",controlling_host_name);
@@ -2602,14 +2604,14 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+m takes an operand. ( filename )\n");
-					     exit(201);
+					     goto out; //exit(201);
 					}
 					strcpy(client_filename,subarg);
 					ret=get_client_info();
 					if(ret <= 0)
 					{
 						printf("Error reading client file\n");
-						exit(178);
+						goto out; //exit(178);
 					}
 					clients_found=ret;
 					distributed=1;
@@ -2642,7 +2644,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+c takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					multiplier = atoi(subarg);
 					if(multiplier <=1)
@@ -2653,7 +2655,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+i takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					controlling_host_port = atoi(subarg);
 					break;
@@ -2662,7 +2664,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+p takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					pct_read = atoi(subarg);
 					if(pct_read < 1)
@@ -2686,7 +2688,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					   printf("-+A take an operand !!\n");
-					   exit(200);
+					   goto out; //exit(200);
 					}
 					advise_flag=1;
 					advise_op=atoi(subarg);
@@ -2705,7 +2707,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+q takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					rest_val = (long long)atoi(subarg);
 					if(rest_val <=0)
@@ -2785,7 +2787,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+K takes an operand !!\n");
-					     exit(204);
+					     goto out; //exit(204);
 					}
 					Kplus_readers = (int)atoi(subarg);
 					if(Kplus_readers <=0)
@@ -2799,7 +2801,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+w takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					dedup = atoi(subarg);
 					if(dedup <=0)
@@ -2814,7 +2816,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+y takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					dedup_interior = atoi(subarg);
 					if(dedup_interior <0)
@@ -2829,7 +2831,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+C takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					dedup_compress = atoi(subarg);
 					if(dedup_compress <0)
@@ -2843,7 +2845,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+S takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					dedup_mseed = atoi(subarg);
 					if(dedup_mseed ==0)
@@ -2855,7 +2857,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+H takes operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					strcpy(pit_hostname,subarg);
 					sprintf(splash[splash_line++],"\tPIT_host %s\n",pit_hostname);
@@ -2866,7 +2868,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+P takes operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					strcpy(pit_service,subarg);
 					sprintf(splash[splash_line++],"\tPIT_port %s\n",pit_service);
@@ -2880,7 +2882,7 @@ char **argv;
 					if(subarg==(char *)0)
 					{
 					     printf("-+O takes an operand !!\n");
-					     exit(200);
+					     goto out; //exit(200);
 					}
 					op_rate = atoi(subarg);
 					if(op_rate <= 0)
@@ -2890,13 +2892,13 @@ char **argv;
 					break;
 				default:
 					printf("Unsupported Plus option -> %s <-\n",optarg);
-					exit(255);
+					goto out; //exit(255);
 					break;
 			}	
 			break;
 		default:
 			printf("Unsupported option -> %s <-\n",optarg);
-			exit(255);
+			goto out; //exit(255);
 		}
     }
 #ifdef __rtems__
@@ -2910,7 +2912,7 @@ char **argv;
 #ifdef NET_BENCH
 		do_speed_check(client_iozone);
 #endif
-		exit(0);
+		goto out; //exit(0);
 	}
 	if(r_count > 1)
 	{
@@ -2943,7 +2945,7 @@ char **argv;
 		if(maxt > clients_found)
 		{
 			printf("You can not specify more threads/processes than you have in the client file list\n");
-			exit(202);
+			goto out; //exit(202);
 		}
 	}
 	
@@ -2959,7 +2961,7 @@ char **argv;
 		printf("Error: minimum record size %lld KB is greater than maximum record size %lld KB\n ",
 			min_rec_size/1024, max_rec_size/1024);
 #endif
-		exit(23);
+		goto out; //exit(23);
         }
 	orig_min_rec_size=min_rec_size;
 	orig_max_rec_size=max_rec_size;
@@ -3079,66 +3081,66 @@ char **argv;
 	if( sverify==0 && (w_traj_flag || r_traj_flag))
 	{
 		printf("\n\tFull verification not supported in telemetry mode.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	;
 	if(disrupt_flag &&(w_traj_flag || r_traj_flag) )
 	{
 		printf("\n\tDisrupt not supported in telemetry mode.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(aflag &&(w_traj_flag || r_traj_flag) )
 	{
 		printf("\n\tAuto mode not supported in telemetry mode.\n");
 		printf("\tTry:   -i 0 -i 1 \n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(sflag && w_traj_flag )
 	{
 		printf("\n\tSize of file is determined by telemetry file.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(rflag && w_traj_flag )
 	{
 		printf("\n\tRecord size of file is determined by telemetry file.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(stride_flag && (w_traj_flag || r_traj_flag))
 	{
 		printf("\n\tStride size is determined by telemetry file.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(trflag && MS_flag)
 	{
 		printf("\n\tMicrosecond mode not supported in throughput mode.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if (trflag	/* throughput mode, don't allow auto-mode options: */
 		&& (auto_mode || aflag || yflag || qflag || nflag || gflag))
 	{
 		printf("\n\tCan not mix throughput mode and auto-mode flags.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(fflag && trflag)
 	{
 		printf("\n\tYou must use -F when using multiple threads or processes.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(aflag && mfflag)
 	{
 		printf("\n\tYou must use -f when using auto mode.\n\n");
-		exit(17);
+		goto out; //exit(17);
 	}
 	if(async_flag && mmapflag)
 	{
 		printf("\n\tSorry ... Only mmap or async but not both\n\n");
-		exit(18);
+		goto out; //exit(18);
 	}
 #ifndef ASYNC_IO
 	if(async_flag)
 	{
 		printf("\n\tSorry ... This version does not support async I/O\n\n");
-		exit(19);
+		goto out; //exit(19);
 	}
 #endif
 	if(no_write)
@@ -3146,7 +3148,7 @@ char **argv;
 	   if(!include_tflag)
 	   {
 	     printf("You must specify which tests ( -i # ) when using -+E\n");
-	     exit(19);
+	     goto out; //exit(19);
 	   }
 	}
 	if(include_tflag)
@@ -3163,7 +3165,7 @@ char **argv;
               include_test[11])
 	   {
 	      printf("You must disable any test that writes when using -+E\n");
-	      exit(20);
+	      goto out; //exit(20);
 	   }
 	}
 	if(no_write) /* User must specify the existing file name */
@@ -3171,18 +3173,18 @@ char **argv;
 	   if(!(fflag | mfflag))
 	   {
 	      printf("You must use -f or -F when using -+E\n");
-	      exit(20);
+	      goto out; //exit(20);
 	   }
 	}
 	if(h_flag && k_flag)
 	{
 		printf("\n\tCan not do both -H and -k\n");
-		exit(20);
+		goto out; //exit(20);
 	}
 	if((dedup | dedup_interior) && diag_v)
 	{
 		printf("\n\tCan not do both -+d and -+w\n");
-		exit(20);
+		goto out; //exit(20);
 	}
 		
 	if(!aflag && !rflag)
@@ -3248,7 +3250,7 @@ char **argv;
                 printf("Error: Maximum record length is %lld bytes\n",
                                 (long long)MAXBUFFERSIZE);
 #endif
-                exit(21);
+                goto out; //exit(21);
         }
         if (reclen < (long long)MINBUFFERSIZE) {
 #ifdef NO_PRINT_LLD
@@ -3258,7 +3260,7 @@ char **argv;
                 printf("Error: Minimum record length is %lld bytes\n",
                                 (long long)MINBUFFERSIZE);
 #endif
-                exit(22);
+                goto out; //exit(22);
         }
 	/* Only bzero or fill that which you will use. The buffer is very large */
 	if(verify )	
