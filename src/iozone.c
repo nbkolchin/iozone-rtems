@@ -62,22 +62,6 @@
 /* The version number */
 #define THISVERSION "        Version $Revision: 3.398 $"
 
-#if 0
-/* The next functionalilties are disabled because of platform limitations */
-/* #define NO_THREADS */
-#undef PIT_ENABLED
-#undef NET_BENCH
-#undef ASYNC_IO
-#undef SHARED_MEM
-#undef MIX_PERF_TEST
-#undef EXCEL
-#undef IMON_ENABLED
-#undef SIGNAL_ENABLE
-#undef POPEN_PCLOSE_ENABLED
-#undef LRAND
-#undef SYSTEM_MOUNT
-#endif
-
 #if defined(linux)
   #define _GNU_SOURCE
 #endif
@@ -334,6 +318,7 @@ static inline void* mmap(
   errno = ENOSYS;
   return MAP_FAILED;
 }
+
 static inline int munmap(
     void* addr RTEMS_VAR_UNUSED,
     size_t length RTEMS_VAR_UNUSED)
@@ -341,6 +326,7 @@ static inline int munmap(
   errno = ENOSYS;
   return -1;
 }
+
 static inline int msync(
     void* addr RTEMS_VAR_UNUSED,
     size_t length RTEMS_VAR_UNUSED,
@@ -1809,9 +1795,12 @@ char **argv;
         char *b1 = NULL;
 
 #ifdef __rtems__
+        memset(splash, 0, sizeof(splash));
         rtems_clock_get(RTEMS_CLOCK_GET_TICKS_PER_SECOND, &ticks_per_second);
+#if 0
         printf(".. %s(), ticks_per_second:%ld\n",
                 __FUNCTION__, ticks_per_second);
+#endif
 #endif
 	anwser=bind_cpu=0;
 	/* Used to make fread/fwrite do something better than their defaults */
@@ -1854,6 +1843,7 @@ char **argv;
 #ifdef IMON_ENABLED
 	(void)find_external_mon(imon_start, imon_stop);
 #endif
+#if 0
 	/*
  	 * Save the splash screen for later display. When in distributed network
 	 * mode this output does not get displayed on the clients.
@@ -1870,6 +1860,7 @@ char **argv;
     	sprintf(splash[splash_line++],"\t             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer.\n");
     	sprintf(splash[splash_line++],"\t             Ben England.\n\n");
 	sprintf(splash[splash_line++],"\tRun began: %s\n",ctime(&time_run));
+#endif
 	argcsave=argc;
 	argvsave=argv;
 #ifdef SIGNAL_ENABLE
@@ -3462,7 +3453,7 @@ long long reclength;
 			if(include_mask & (long long)(1<<i))
                         {
 #if 0
-                           printf(".. %s(tflag:%d): func[%lld] running\n",
+                           printf(".. %s(tflag:%d): test[%lld] running\n",
                                   __FUNCTION__, include_tflag, i);
 #endif
 			   func[i](kilobytes64,reclen,&data1[i],&data2[i]);
@@ -7557,13 +7548,6 @@ static double
 time_so_far()
 #endif
 {
-#ifdef __rtems__
-#if 0
-   double current_time;
-#else
-   rtems_interval rtems_ticks;
-#endif
-#endif
 #ifdef Windows
    LARGE_INTEGER freq,counter;
    double wintime,bigcounter;
@@ -7602,13 +7586,6 @@ time_so_far()
     ( ((float)(gp.tv_nsec)) * 0.000000001 ));
 #else
 #if defined (__rtems__)
-// #if 0
-//   current_time = ((double)benchmark_timer_read());
-//   return current_time;
-// #else
-//   rtems_ticks = rtems_clock_get_ticks_since_boot();
-//   return (double)(rtems_ticks/ticks_per_second);
-// #endif
   struct timespec gp;
   rtems_clock_get_uptime(&gp);
   return (( (double) (gp.tv_sec)) +
@@ -12816,10 +12793,10 @@ int shared_flag;
 #if defined(solaris) 
         char mmapFileName[]="mmap_tmp_XXXXXX";
 #endif
-
+#if 0
         printf(".. %s(): distributed:%d, shared_flag:%d, trflag:%d, use_thread:%d\n",
                 __FUNCTION__, distributed, shared_flag, trflag, use_thread);
-
+#endif
 	tmp = 0;
 	dumb = (char *)0;
 	tfd=0;
@@ -12854,7 +12831,7 @@ int shared_flag;
 #else
                 printf("shmid = %d, size = %lld, size1 = %lu, Error %d\n",shmid,size,(unsigned long)size1,errno);
 #endif
-                exit(119);
+                return 0; //exit(119);
         }
         /*addr = (char *)shmat(shmid, 0, SHM_W);*/
 	/* Some systems will not take the above but
@@ -12872,7 +12849,7 @@ int shared_flag;
         {
                 printf("\nUnable to get shared memory segment\n");
                 printf("..Error %d\n",errno);
-                exit(120);
+                return 0; //exit(120);
         }
 	shmctl(shmid, IPC_RMID, 0);
 	return(addr);
@@ -12883,7 +12860,7 @@ int shared_flag;
 	if((tfd = creat("mmap.tmp", 0666))<0)
 	{
 		printf("Unable to create tmp file\n");
-		exit(121);
+		return 0; //exit(121);
 	}
 	addr=(char *)mmap(0,&size1,PROT_WRITE|PROT_READ,
 		MAP_ANON|MAP_SHARED, tfd, 0);
@@ -12896,7 +12873,7 @@ int shared_flag;
         if(tfd < 0)
 	{
 		printf("Unable to create tmp file\n");
-		exit(121);
+		return 0; //exit(121);
 	}
 	dumb=(char *)malloc((size_t)size1);
 	bzero(dumb,size1);
@@ -12912,7 +12889,7 @@ int shared_flag;
         if(tfd < 0)
         {
                 printf("Unable to create tmp file\n");
-                exit(121);
+                return 0; //exit(121);
         }
         dumb=(char *)malloc((size_t)size1);
 	bzero(dumb,size1);
@@ -12931,7 +12908,7 @@ int shared_flag;
 	{
 		printf("\nUnable to get memory segment\n");
 		printf("Error %d\n",errno);
-		exit(122);
+		return 0; //exit(122);
 	}
 	if(debug1)
 		printf("Got shared memory for size %lld\n",size1);
@@ -20246,13 +20223,6 @@ static double
 time_so_far1()
 #endif
 {
-#ifdef __rtems__
-#if 0
-   double current_time;
-#else
-   struct timespec rtems_ts;
-#endif
-#endif
      /* For Windows the time_of_day() is useless. It increments in 
         55 milli second  increments. By using the Win32api one can 
 	get access to the high performance measurement interfaces. 
@@ -20293,20 +20263,6 @@ time_so_far1()
     ( ((float)(gp.tv_nsec)) * 0.001 ));
 #else
 #if defined (__rtems__)
-// #if 0
-//   current_time = ((double)benchmark_timer_read());
-// 
-//   return current_time;
-// #else
-//  rtems_clock_get(RTEMS_CLOCK_GET_SECONDS_SINCE_EPOCH, &rtems_seconds);
-//  return ((double)rtems_seconds * 1000000.0);
-//  _TOD_Get(&rtems_ts);
-//  printf(".. %s(). sec:%ld nanosec:%ld\n", __FUNCTION__,
-//          rtems_ts.tv_sec, rtems_ts.tv_nsec);
-//  fflush(stdout);
-//  return ((double)(rtems_ts.tv_sec)*1000000.0) + 
-//         ((double)(rtems_ts.tv_nsec)/1000.0);
-// #endif
   struct timespec gp;
   rtems_clock_get_uptime(&gp);
   return (( (double) (gp.tv_sec)*1000000.0) +

@@ -25,14 +25,21 @@
 #include "msdos_format.h"
 #include "iozone_cfg.h"
 
-#if __RTEMS_MAJOR__ == 4 && __RTEMS_MINOR__ < 10
-#define COMBO_RTEMS
-#else
-#undef COMBO_RTEMS
-#endif
-
 #ifndef COMBO_RTEMS
 #include <rtems/bdpart.h>
+#include <rtems/rtems-rfs-format.h>
+#endif
+
+#if 1
+#undef FAT_BENCH
+#else
+#define FAT_BENCH
+#endif
+
+#if 1
+#undef FORMAT_ENABLE
+#else
+#define FORMAT_ENABLE
 #endif
 
 #define DEVNAME "/dev/hda"
@@ -46,48 +53,9 @@ unsigned long fpga_data_len = sizeof(_fpga_data);
 unsigned char* fpga_data = _fpga_data;
 #endif
 
-#if 0
-static const rtems_fstab_entry fstab [] = {
-  {
-    .source = "/dev/sd-card-a",
-    .target = "/mnt",
-    .type = "dosfs",
-    .options = RTEMS_FILESYSTEM_READ_WRITE,
-    .report_reasons = RTEMS_FSTAB_ANY,
-    .abort_reasons = RTEMS_FSTAB_OK
-  }, {
-    .source = "/dev/sd-card-a1",
-    .target = "/mnt",
-    .type = "dosfs",
-    .options = RTEMS_FILESYSTEM_READ_WRITE,
-    .report_reasons = RTEMS_FSTAB_ANY,
-    .abort_reasons = RTEMS_FSTAB_NONE
-  }
-};
-
-static void my_mount(void)
-{
-  rtems_status_code sc = RTEMS_SUCCESSFUL;
-  int rv = 0;
-  size_t abort_index = 0;
-
-  sc = rtems_bdpart_register_from_disk("/dev/sd-card-a");
-  if (sc != RTEMS_SUCCESSFUL) {
-    printf("read partition table failed: %s\n", rtems_status_text(sc));
-  }
-
-  rv = rtems_fsmount(fstab, sizeof(fstab) / sizeof(fstab [0]), &abort_index);
-  if (rv != 0) {
-    printf("mount failed: %s\n", strerror(errno));
-  }
-  printf("mount aborted at %zu\n", abort_index);
-}
-
-#endif
-
 #ifdef COMBO_RTEMS
 fstab_t fs_table = {
-  "/dev/hda1",
+  "/dev/hda",
   "/mnt/flash",
   &msdos_ops,
   RTEMS_FILESYSTEM_READ_WRITE,
@@ -96,6 +64,7 @@ fstab_t fs_table = {
 };
 #else
 static const rtems_fstab_entry fstab[] = {
+#ifdef FAT_BENCH
   {
     .source = "/dev/hda",
     .target = "/mnt/flash",
@@ -103,28 +72,125 @@ static const rtems_fstab_entry fstab[] = {
     .options = RTEMS_FILESYSTEM_READ_WRITE,
     .report_reasons = RTEMS_FSTAB_ANY,
     .abort_reasons = RTEMS_FSTAB_OK
-  }, {
-    .source = "/dev/hda1",
-    .target = "/mnt",
-    .type = "dosfs",
+  }
+#else
+  {
+    .source = "/dev/hda",
+    .target = "/mnt/flash",
+    .type = "rfs",
     .options = RTEMS_FILESYSTEM_READ_WRITE,
     .report_reasons = RTEMS_FSTAB_ANY,
     .abort_reasons = RTEMS_FSTAB_NONE
   }
+#endif
 };
 #endif
 
 static int init_ide()
 {
-  int rc;
-  char buf[512];
+  int rc = 0;
 
 #ifndef COMBO_RTEMS
   rtems_status_code sc = RTEMS_SUCCESSFUL;
-  int rv = 0;
   size_t abort_index = 0;
 #endif
 
+#ifndef FAT_BENCH
+  rtems_rfs_format_config rfs_config =
+  {
+     .block_size = 0,        /* The size of a block. */
+     .group_blocks = 0,      /* The number of blocks in a group. */
+     .group_inodes = 0,      /* The number of inodes in a group. */
+     .inode_overhead = 0,    /* The percentage overhead allocated to inodes. */
+     .max_name_length = 0,   /* The maximum length of a name. */
+     .initialise_inodes = 0, /* Initialise the inode tables to all ones. */
+     .verbose = 1            /* Is the format verbose.  */
+  };
+#endif
+
+#ifdef COMBO_RTEMS
+  printk(".. COMBO RTEMS ..\n");
+#else
+  printk(".. VANILLA RTEMS ..\n");
+#endif
+
+#ifdef FAT_BENCH
+  printk(".. FAT benchmarking. Preparing/formatting partition\n");
+#ifdef FORMAT_ENABLE
+  rc = msdos_format("/dev/hda", NULL);
+  if (rc != 0)
+     printk(".. msdos_format(/dev/hda) failed: %s\n", strerror(errno));
+  else
+     printk(".. msdos_format is OK\n");
+#endif
+#else
+  printk(".. RFS benchmarking. Preparing/formatting disk\n");
+#if 0
+  {
+      int i;
+
+#define PARTITION_COUNT 1
+
+      rtems_bdpart_partition created_partitions[PARTITION_COUNT];
+
+      static const rtems_bdpart_format format = {
+         .mbr = {
+            .type = RTEMS_BDPART_FORMAT_MBR,
+            .disk_id = 0xdeadbeef,
+            .dos_compatibility = false
+         }
+      };
+
+      static const unsigned distribution[PARTITION_COUNT] = {
+            1
+      };
+
+      memset(&created_partitions[0], 0, sizeof(created_partitions));
+
+      for (i = 0; i < PARTITION_COUNT; ++i) {
+          rtems_bdpart_to_partition_type(RTEMS_BDPART_MBR_EMPTY,
+                                         created_partitions[i].type);
+      }
+
+      sc = rtems_bdpart_create("/dev/hda", &format,
+                               &created_partitions[0],
+                               &distribution[0],
+                               PARTITION_COUNT);
+      if (sc != 0)
+          printk(".. rtems_bdpart_create(/dev/hda) failed: %s\n", strerror(errno));
+      else
+          printk(".. rtems_bdpart_create() is OK\n");
+
+      sc = rtems_bdpart_write("/dev/hda", &format,
+                              &created_partitions[0],
+                              PARTITION_COUNT);
+      if (sc != 0)
+          printk(".. rtems_bdpart_write(/dev/hda) failed: %s\n", strerror(errno));
+      else
+          printk(".. rtems_bdpart_write() is OK\n");
+  }
+#endif
+
+#ifdef FORMAT_ENABLE
+  rc = rtems_rfs_format("/dev/hda", &rfs_config);
+  if (rc != 0)
+     printk(".. rfs_format(/dev/hda) failed: %s\n", strerror(errno));
+  else
+     printk(".. rfs_format is OK\n");
+#endif
+
+#endif
+
+  /* Create a mount point folder */
+  rc = mkdir("/mnt", 0777);
+  if(rc == -1)
+  {
+    printk("mkdir failed: %s\n", strerror(errno));
+    exit(3);
+  }
+
+#ifdef COMBO_RTEMS
+  /* Some checking needed for combo version only */
   rc = open(DEVNAME, O_RDWR);
   if(rc == -1)
   {
@@ -137,19 +203,15 @@ static int init_ide()
     exit(2);
   }
   close(rc);
-  rc = mkdir("/mnt", 0777);
-  if(rc == -1)
-  {
-    printk("mkdir failed: %s\n", strerror(errno));
-    exit(3);
-  }
-#ifdef COMBO_RTEMS
+  /* end of checking */
+
   rc = rtems_ide_part_table_initialize(DEVNAME);
   if(rc != RTEMS_SUCCESSFUL)
   {
     printk("ide_part_table failed: %i\n", rc);
     exit(4);
   }
+
   rc = rtems_fsmount(&fs_table, 1, NULL);
   if(rc != 1)
   {
@@ -157,19 +219,31 @@ static int init_ide()
     exit(5);
   }
 #else
+
+#if 0
   sc = rtems_bdpart_register_from_disk("/dev/hda");
   if (sc != RTEMS_SUCCESSFUL) {
-    printf("read partition table failed: %s\n", rtems_status_text(sc));
+    printk("read partition table failed: %s\n", rtems_status_text(sc));
     exit(4);
   }
+  else
+  {
+    printk(".. partition table of \"/dev/hda\" is OK\n");
+  }
+#endif
 
-  rv = rtems_fsmount(fstab, sizeof(fstab) / sizeof(fstab [0]), &abort_index);
-  if (rv != 0) {
-    printf("mount failed: %s\n", strerror(errno));
+  rc = rtems_fsmount(fstab, sizeof(fstab) / sizeof(fstab [0]), &abort_index);
+  if (rc != 0) {
+    printk("mount failed: %s\n", strerror(errno));
     exit(5);
   }
+  else
+  {
+    printk(".. %s() returns OK\n", __FUNCTION__);
+  }
 
-  printf("mount aborted at %zu\n", abort_index);
+  if (abort_index)
+      printf("mount aborted at %zu\n", abort_index);
 #endif
 
   printf(".. CompactFlash logical disk has been mounted\n");
@@ -208,14 +282,11 @@ static void init_telnetd()
 
 rtems_task Init(rtems_task_argument unused)
 {
-  msdos_format_request_param_t rqdata;
-
-  memset(&rqdata, 0, sizeof(rqdata));
-  /* TODO: hardcoded devname :( */
-  msdos_format("/dev/hda1", &rqdata);
 
   init_ide();
+
   init_telnetd();
+
   if(rtems_shell_add_cmd_struct(&iozone_cmd) == NULL)
   {
     printk("add iozone_cmd to shell failed");
@@ -225,6 +296,4 @@ rtems_task Init(rtems_task_argument unused)
   rtems_task_delete(RTEMS_SELF);
 
   exit(0);
-}  
-
-
+}

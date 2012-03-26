@@ -15,6 +15,12 @@
 
 #include <rtems.h>
 
+#if __RTEMS_MAJOR__ == 4 && __RTEMS_MINOR__ < 10
+#define COMBO_RTEMS
+#else
+#undef COMBO_RTEMS
+#endif
+
 /* functions */
 
 rtems_task Init(
@@ -53,11 +59,11 @@ rtems_driver_address_table Device_drivers[] =
 	};
 
 #define CONFIGURE_MAXIMUM_PARTITIONS              16
-#define CONFIGURE_MAXIMUM_TASKS                 8
-#define CONFIGURE_MAXIMUM_TIMERS                8
-#define CONFIGURE_MAXIMUM_SEMAPHORES            16
-#define CONFIGURE_MAXIMUM_MESSAGE_QUEUES        16
-#define CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS 20
+#define CONFIGURE_MAXIMUM_TASKS                   8
+#define CONFIGURE_MAXIMUM_TIMERS                  8
+#define CONFIGURE_MAXIMUM_SEMAPHORES              16
+#define CONFIGURE_MAXIMUM_MESSAGE_QUEUES          16
+#define CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS  20
 
 #define CONFIGURE_MICROSECONDS_PER_TICK 10000
 
@@ -68,6 +74,11 @@ rtems_driver_address_table Device_drivers[] =
 #define CONFIGURE_EXTRA_TASK_STACKS         (64 * 64 * RTEMS_MINIMUM_STACK_SIZE)
 
 #define CONFIGURE_USE_IMFS_AS_BASE_FILESYSTEM
+
+#ifndef COMBO_RTEMS
+#define CONFIGURE_FILESYSTEM_RFS
+#define CONFIGURE_FILESYSTEM_DOSFS
+#endif
 
 /* #define CONFIGURE_BDBUF_BUFFER_COUNT 8 */
 
