@@ -1,0 +1,110 @@
+-N  Report results in microseconds per operation
+-O  Give results in ops/sec.
+-s  file size in Kb
+-S  set the processor cache size ??????
+-L  set processor cache line size ?????
+-r  specify the record size to use
+
+iozone -i 0 -i 1 -i 2 -i 3 -i 4 -i 5 -i 6 -i 7 -s 1024 -r 8 -f /mnt/flash/igorv
+iozone -s 512 -r 4 -i 0 -i 1 -i 2 -i 3 -i 4 -i 5 -i 6 -i 7 -f /mnt/flash/igorv
+iozone -i 0 -i 1 -i 2 -i 3 -i 4 -i 5 -i 6 -i 7 -f /mnt/flash/igorv
+
+
+.. VANILLA RTEMS ..
+.. FAT benchmarking. Preparing/formatting partition
+.. msdos_format is OK
+.. mount(/dev/hda, /mnt/flash, dosfs). Entry
+.. mount(): fsmount_me_h:6753C
+.. mount(): mt_entry:22EA058
+.. mount(): (*fsmount_me_h) returns:0
+.. mount(): target:C6EAC,  rv:0
+.. mount(): returns  rv:0
+fsmo
+    unt: mounting of "/dev/hda" to "/mnt/flash" succeeded
+.. init_ide() returns OK
+.. CompactFlash logical disk has been mounted
+telnetd setup with invalid command
+
+RTEMS SHELL (Ver.1.0-FRC):/dev/tty1. Mar 22 2012. 'help' to list commands.
+[/] # iozone -i 0 -i 1 -i 2 -i 3 -i 4 -i 5 -i 6 -i 7 -f /mnt/flash/igorv
+Command line used: iozone -i 0 -i 1 -i 2 -i 3 -i 4 -i 5 -i 6 -i 7 -f /mnt/flash/igorv
+Output is in Kbytes/sec
+Time Resolution = 0.000001 seconds.
+Processor cache size set to 1024 Kbytes.
+Processor cache line size set to 32 bytes.
+File stride size set to 17 * record size.
+
+.. VANILLA RTEMS .. RFS benchmarking
+                                               random  random    bkwd   record   stride
+ KB  reclen   write rewrite    read    reread    read   write    read  rewrite     read   fwrite frewrite   fread  freread
+512       4     482    2463     1173     1169    1109     418     465    25245      392     2391     2359    1148     1144
+512       4     495    2519     1168     1163    1106     420     464    26304      391     2440     2409    1145     1142
+512       4     495    2518     1168     1163    1106     420     464    26297      391     2440     2409    1145     1142
+
+
+
+.. VANILLA RTEMS .. FAT benchmarking
+                                               random  random    bkwd   record   stride
+ KB  reclen   write rewrite    read    reread    read   write    read  rewrite     read   fwrite frewrite   fread  freread
+512       4     442    2048      425      378     437     422     413    74239      358     2012     2044     421      336
+512       4     448    2053      425      378     437     423     413    75335      359     2014     2048     421      336
+512       4     448    2052      425      378     437     423     413    73861      359     2015     2047     421      336
+
+512       4     429    2085      427      379     439     425     415    78589      360     2009     2040     423      337
+
+
+512       4     454    2052      425      378     437     424     413    74407      359     2015     2049     421      336 (opt disabled)
+512       4     448    2046      426      378     438     424     414    80553      359     2007     2040     422      337 (opt enabled)
+512       4     453    2059      425      378     436     424     413    78761      358     2017     2050     421      336 (mtime???)
+
+rtems:comb-tools application+rtems:vanilla-tools (unclear????) 
+512       4    1872     282      482      482     484     211     559    70943      470      273      279     439      439
+
+
+.. COMBO RTEMS .. FAT benchmarking - gcc 4.4, newlib
+                                               random  random    bkwd   record   stride
+ KB  reclen   write rewrite    read    reread    read   write    read  rewrite     read   fwrite frewrite   fread  freread
+512       4     759      50     2014     2015    2004      19    2033    74918     1986       50       50    1948     1949
+512       4     678      51     2014     2015    2004      19    2034    74788     1987       51       51    1949     1949
+512       4     996      51     2015     2015    2004      19    2033    74776     1987       51       50    1948     1949
+
+
+SciMark2 Numeric Benchmark:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+(COMBO)Composite Score:    16.46
+(VANILLA)Composite Score:  32.66
+
+
+Composite Score:           32.66 16.46
+FFT             Mflops:    48.67 24.78   (N=1024)
+SOR             Mflops:    55.76 27.88   (100 x 100)
+MonteCarlo:     Mflops:    15.32  7.99
+Sparse matmult  Mflops:    17.14  8.46   (N=1000, nz=5000)
+LU              Mflops:    26.42 13.17   (M=100, N=100)
+
+
+(128)
+                                               random  random    bkwd   record   stride                                   
+ KB  reclen   write rewrite    read    reread    read   write    read  rewrite     read   fwrite frewrite   fread  freread
+512       4     367     983      727      726     719     204     708    70571      711      937      955     710      709 (vanilla - hole)
+512       4     292     275      821      788     816     132     824    92534      810      274      276     799      766 (rtems:comb-tools application+rtems:vanilla-tools)
+512       4     295     277      823      791     818     133     827    90828      813      276      276     800      767
+
+512       4     623    1006      678      678     648     195     671    33749      637      934      936     670      671 (rfs)
+
+
+(2G) VANILLA rtems
+                                               random  random    bkwd   record   stride                                   
+ KB  reclen   write rewrite    read    reread    read   write    read  rewrite     read   fwrite frewrite   fread  freread
+512       4    1224    1832     1656     1653    1633     219    1619    43119     1627     1694     1815    1613     1613    (rfs)
+512       4    1311    1864     1317     1316    1308     206    1347    79197     1298     1750     1863    1290     1290    (fat32)
+512       4     524    1855     1318     1318    1300     220    1226    82832     1301     1751     1855    1289     1289    (fat16)
+
+
+(2G) COMBO (vanilla-hole)
+
+                                               random  random    bkwd   record   stride                                   
+ KB  reclen   write rewrite    read    reread    read   write    read  rewrite     read   fwrite frewrite   fread  freread
+512       4     970     953     1686     1686    1674     184    1739    92752     1664      956      954    1637     1638    (fat32)
+512       4     676     965     1714     1714    1695     179    1692   101045     1691      964      964    1661     1661    (fat16)
+
