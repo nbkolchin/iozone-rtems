@@ -30,7 +30,7 @@
 #include <rtems/rtems-rfs-format.h>
 #endif
 
-#if 1
+#if 0
 #undef FAT_BENCH
 #else
 #define FAT_BENCH
@@ -90,10 +90,11 @@ static int init_ide()
 {
   int rc = 0;
 
+  char buf[512];
+
 #ifndef COMBO_RTEMS
   rtems_status_code sc = RTEMS_SUCCESSFUL;
   size_t abort_index = 0;
-#endif
 
 #ifndef FAT_BENCH
   rtems_rfs_format_config rfs_config =
@@ -106,6 +107,7 @@ static int init_ide()
      .initialise_inodes = 0, /* Initialise the inode tables to all ones. */
      .verbose = 1            /* Is the format verbose.  */
   };
+#endif
 #endif
 
 #ifdef COMBO_RTEMS
@@ -179,7 +181,7 @@ static int init_ide()
      printk(".. rfs_format is OK\n");
 #endif
 
-#endif
+#endif /* FAT_BENCH */
 
   /* Create a mount point folder */
   rc = mkdir("/mnt", 0777);
@@ -205,12 +207,14 @@ static int init_ide()
   close(rc);
   /* end of checking */
 
+#if 0
   rc = rtems_ide_part_table_initialize(DEVNAME);
   if(rc != RTEMS_SUCCESSFUL)
   {
     printk("ide_part_table failed: %i\n", rc);
     exit(4);
   }
+#endif
 
   rc = rtems_fsmount(&fs_table, 1, NULL);
   if(rc != 1)
