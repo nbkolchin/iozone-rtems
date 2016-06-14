@@ -72,7 +72,7 @@
 #elif defined(__rtems__)
 #include <rtems.h>
 #include <rtems/system.h>
-#include <rtems/timerdrv.h>
+//#include <rtems/timerdrv.h>
 #include <rtems/error.h>
 #include <errno.h>
 #else

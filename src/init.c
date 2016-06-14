@@ -17,19 +17,16 @@
 #include <rtems/dosfs.h>
 #include <rtems/fsmount.h>
 #include <rtems/ide_part_table.h>
+#include <rtems/bdpart.h>
+#include <rtems/rtems-rfs-format.h>
 
 #include <rtems/shell.h>
 
 #include "config/net-cfg.h"
 #include "telnet_compat.h"
-#include "msdos_format.h"
 #include "iozone_cfg.h"
 
-#ifndef COMBO_RTEMS
-#include <rtems/bdpart.h>
-#include <rtems/rtems-rfs-format.h>
-#endif
-
+/* TODO: rewrite this shit... */
 #if 0
 #undef FAT_BENCH
 #else
@@ -44,25 +41,6 @@
 
 #define DEVNAME "/dev/hda"
 
-#ifdef __PPC__
-static unsigned char _fpga_data[] =
-{
-#include "ppc-altera/TDS12_Base.ttf"
-};
-unsigned long fpga_data_len = sizeof(_fpga_data);
-unsigned char* fpga_data = _fpga_data;
-#endif
-
-#ifdef COMBO_RTEMS
-fstab_t fs_table = {
-  "/dev/hda",
-  "/mnt/flash",
-  &msdos_ops,
-  RTEMS_FILESYSTEM_READ_WRITE,
-  FSMOUNT_MNT_OK|FSMOUNT_MNTPNT_CRTERR|FSMOUNT_MNT_FAILED,
-  0
-};
-#else
 static const rtems_fstab_entry fstab[] = {
 #ifdef FAT_BENCH
   {
@@ -84,16 +62,11 @@ static const rtems_fstab_entry fstab[] = {
   }
 #endif
 };
-#endif
 
 static int init_ide()
 {
   int rc = 0;
-
-  char buf[512];
-
-#ifndef COMBO_RTEMS
-  rtems_status_code sc = RTEMS_SUCCESSFUL;
+  // rtems_status_code sc = RTEMS_SUCCESSFUL;
   size_t abort_index = 0;
 
 #ifndef FAT_BENCH
@@ -107,13 +80,6 @@ static int init_ide()
      .initialise_inodes = 0, /* Initialise the inode tables to all ones. */
      .verbose = 1            /* Is the format verbose.  */
   };
-#endif
-#endif
-
-#ifdef COMBO_RTEMS
-  printk(".. COMBO RTEMS ..\n");
-#else
-  printk(".. VANILLA RTEMS ..\n");
 #endif
 
 #ifdef FAT_BENCH
@@ -191,39 +157,6 @@ static int init_ide()
     exit(3);
   }
 
-#ifdef COMBO_RTEMS
-  /* Some checking needed for combo version only */
-  rc = open(DEVNAME, O_RDWR);
-  if(rc == -1)
-  {
-    printk("dev open failed: %s\n", strerror(errno));
-    exit(1);
-  }
-  if(read(rc, buf, 512) != 512)
-  {
-    printk("dev read failed: %s\n", strerror(errno));
-    exit(2);
-  }
-  close(rc);
-  /* end of checking */
-
-#if 0
-  rc = rtems_ide_part_table_initialize(DEVNAME);
-  if(rc != RTEMS_SUCCESSFUL)
-  {
-    printk("ide_part_table failed: %i\n", rc);
-    exit(4);
-  }
-#endif
-
-  rc = rtems_fsmount(&fs_table, 1, NULL);
-  if(rc != 1)
-  {
-    printk("rtems_fsmount failed: %i\n", rc);
-    exit(5);
-  }
-#else
-
 #if 0
   sc = rtems_bdpart_register_from_disk("/dev/hda");
   if (sc != RTEMS_SUCCESSFUL) {
@@ -237,7 +170,8 @@ static int init_ide()
 #endif
 
   rc = rtems_fsmount(fstab, sizeof(fstab) / sizeof(fstab [0]), &abort_index);
-  if (rc != 0) {
+  if (rc != 0) 
+  {
     printk("mount failed: %s\n", strerror(errno));
     exit(5);
   }
@@ -248,7 +182,6 @@ static int init_ide()
 
   if (abort_index)
       printf("mount aborted at %zu\n", abort_index);
-#endif
 
   printf(".. CompactFlash logical disk has been mounted\n");
   return 0;
@@ -275,29 +208,21 @@ static void init_telnetd()
   rtems_termios_initialize();
   rtems_initialize_network();
   rtems_telnetd_initialize();
-#ifdef COMBO_RTEMS
-  rc = rtems_shell_init("SHll", 32000, 100, "/dev/tty1", 1, 0);
-#else
   rc = rtems_shell_init("SHll", 32000, 100, "/dev/tty1", 1, 0, NULL);
-#endif
   if(rc != RTEMS_SUCCESSFUL)
     printk("init shell on console failed\n");
 }
 
 rtems_task Init(rtems_task_argument unused)
 {
-
+  (void)unused;
   init_ide();
-
   init_telnetd();
-
   if(rtems_shell_add_cmd_struct(&iozone_cmd) == NULL)
   {
     printk("add iozone_cmd to shell failed");
     exit(3);
   }
-
   rtems_task_delete(RTEMS_SELF);
-
   exit(0);
 }

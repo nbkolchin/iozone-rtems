@@ -6,7 +6,7 @@
 #
 
 # C source names, if any, go here -- minus the .c
-C_PIECES=init iozone msdos_format
+C_PIECES=init iozone
 C_FILES=$(C_PIECES:%=%.c)
 C_O_FILES=$(C_PIECES:%=${ARCH}/%.o)
 
@@ -49,6 +49,7 @@ DEFINES  += -DNAME='"rtems"' -DHAVE_ANSIC_C -DNO_MADVISE \
 	    -DDONT_HAVE_O_DIRECT -DNO_THREADS
 CPPFLAGS += -I../../ppc-altera
 CFLAGS   += 
+# -W -Wall -Wextra -Werror -Wno-missing-field-initializers
 
 #
 # CFLAGS_DEBUG_V are used when the `make debug' target is built.

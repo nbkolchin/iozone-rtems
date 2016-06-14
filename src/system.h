@@ -15,12 +15,6 @@
 
 #include <rtems.h>
 
-#if __RTEMS_MAJOR__ == 4 && __RTEMS_MINOR__ < 10
-#define COMBO_RTEMS
-#else
-#undef COMBO_RTEMS
-#endif
-
 /* functions */
 
 rtems_task Init(
@@ -33,14 +27,11 @@ rtems_task Init(
 #include <libchip/ata.h> /* for ata driver prototype */
 #include <libchip/ide_ctrl.h> /* for general ide driver prototype */
 
-/*
 #define CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER
 #define CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
-*/
-
-#define CONFIGURE_APPLICATION_NEEDS_ATA_DRIVER
 #define CONFIGURE_APPLICATION_NEEDS_LIBBLOCK
 
+#if 0
 #define CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE
 
 #define NULL_DRIVER_TABLE_ENTRY \
@@ -57,6 +48,7 @@ rtems_driver_address_table Device_drivers[] =
 #endif
 	, NULL_DRIVER_TABLE_ENTRY
 	};
+#endif
 
 #define CONFIGURE_MAXIMUM_PARTITIONS              16
 #define CONFIGURE_MAXIMUM_TASKS                   8
@@ -75,10 +67,8 @@ rtems_driver_address_table Device_drivers[] =
 
 #define CONFIGURE_USE_IMFS_AS_BASE_FILESYSTEM
 
-#ifndef COMBO_RTEMS
 #define CONFIGURE_FILESYSTEM_RFS
 #define CONFIGURE_FILESYSTEM_DOSFS
-#endif
 
 /* #define CONFIGURE_BDBUF_BUFFER_COUNT 8 */
 
